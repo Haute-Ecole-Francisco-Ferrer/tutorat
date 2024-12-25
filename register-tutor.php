@@ -1,6 +1,7 @@
 <?php
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/validation/registration-validation.php';
 
 session_start();
 $currentPage = 'register-tutor';
@@ -13,7 +14,88 @@ $error_message = "";
 $success_message = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    require_once 'process-tutor-registration.php';
+    try {
+        // Validate registration data
+        $data = validateRegistrationData($_POST, $_FILES);
+        
+        // Check if username or email already exists
+        checkExistingUser($db, $data['username'], $data['email']);
+
+        $db->beginTransaction();
+
+        // Insert user
+        $stmt = $db->prepare("
+            INSERT INTO users (
+                firstname, lastname, username, email, password, 
+                photo, phone, study_level, department_id, section, user_type
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'tutor')
+        ");
+        
+        $stmt->execute([
+            $data['firstname'],
+            $data['lastname'],
+            $data['username'],
+            $data['email'],
+            password_hash($data['password'], PASSWORD_DEFAULT),
+            $data['photo'] ?? null,
+            $data['phone'],
+            $data['study_level'],
+            $data['department_id'],
+            $data['section']
+        ]);
+        
+        $user_id = $db->lastInsertId();
+
+        // Create tutor record
+        $stmt = $db->prepare("INSERT INTO tutors (user_id) VALUES (?)");
+        $stmt->execute([$user_id]);
+        $tutor_id = $db->lastInsertId();
+
+        // Add subjects
+        if (isset($_POST["subjects"]) && is_array($_POST["subjects"])) {
+            $stmt = $db->prepare("INSERT INTO tutor_subjects (tutor_id, subject_id) VALUES (?, ?)");
+            foreach ($_POST["subjects"] as $subject_id) {
+                $stmt->execute([$tutor_id, $subject_id]);
+            }
+        }
+
+        // Add availabilities
+        if (isset($_POST["days"]) && is_array($_POST["days"])) {
+            $stmt = $db->prepare("
+                INSERT INTO availability (user_id, day_of_week, start_time, end_time) 
+                VALUES (?, ?, ?, ?)
+            ");
+            
+            foreach ($_POST["days"] as $day) {
+                $start_time = $_POST["start_time_" . $day] ?? null;
+                $end_time = $_POST["end_time_" . $day] ?? null;
+                
+                if ($start_time && $end_time) {
+                    $days_map = [
+                        1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday',
+                        4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday'
+                    ];
+                    
+                    $stmt->execute([
+                        $user_id,
+                        $days_map[$day],
+                        $start_time,
+                        $end_time
+                    ]);
+                }
+            }
+        }
+
+        $db->commit();
+        $success_message = "Inscription réussie ! Vous pouvez maintenant vous connecter.";
+        
+        header("Location: login.php?registered=1");
+        exit();
+
+    } catch (Exception $e) {
+        $db->rollBack();
+        $error_message = $e->getMessage();
+    }
 }
 
 require_once 'includes/header.php';
@@ -28,163 +110,54 @@ require_once 'includes/header.php';
                 <?php echo $error_message; ?>
             </div>
         <?php endif; ?>
-        
-        <?php if ($success_message): ?>
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                <?php echo $success_message; ?>
-            </div>
-        <?php endif; ?>
 
-        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST" enctype="multipart/form-data" class="space-y-6">
-            <!-- Nom et Prénom -->
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <!-- Personal Information -->
             <div class="grid md:grid-cols-2 gap-6">
                 <div>
-                    <label for="lastname" class="block text-sm font-medium text-gray-700 mb-1">Nom :</label>
-                    <input type="text" id="lastname" name="lastname" required 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label for="firstname" class="block text-sm font-medium text-gray-700 mb-1">Prénom :</label>
+                    <label for="firstname" class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
                     <input type="text" id="firstname" name="firstname" required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+                <div>
+                    <label for="lastname" class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                    <input type="text" id="lastname" name="lastname" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
             </div>
 
-            <!-- Username -->
-            <div>
-                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Pseudo :</label>
-                <input type="text" id="username" name="username" required 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <!-- Mot de passe -->
+            <!-- Account Information -->
             <div class="grid md:grid-cols-2 gap-6">
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe :</label>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Pseudo</label>
+                    <input type="text" id="username" name="username" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="email" name="email" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <!-- Password -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
                     <input type="password" id="password" name="password" required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Répéter mot de passe :</label>
+                    <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
                     <input type="password" id="confirm_password" name="confirm_password" required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
 
-            <!-- Photo -->
-            <div>
-                <label for="photo" class="block text-sm font-medium text-gray-700 mb-1">Photo :</label>
-                <input type="file" id="photo" name="photo" accept="image/*" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
+            <!-- Contact and Academic Information -->
+            <?php require 'includes/components/registration-fields.php'; ?>
 
-            <!-- Téléphone -->
-            <div>
-                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Numéro de téléphone :</label>
-                <input type="tel" id="phone" name="phone" required 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <!-- Niveau d'études -->
-            <div>
-                <label for="study_level" class="block text-sm font-medium text-gray-700 mb-1">Niveau d'études :</label>
-                <select id="study_level" name="study_level" required 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Sélectionnez votre niveau</option>
-                    <option value="Bloc 1">Bloc 1</option>
-                    <option value="Bloc 2 - poursuite d'études">Bloc 2 - poursuite d'études</option>
-                    <option value="Bloc 2 - année diplômante">Bloc 2 - année diplômante</option>
-                    <option value="Master">Master</option>
-                </select>
-            </div>
-
-            <!-- Département -->
-            <div>
-                <label for="department_id" class="block text-sm font-medium text-gray-700 mb-1">Département :</label>
-                <select id="department_id" name="department_id" required 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Sélectionnez votre département</option>
-                    <?php foreach ($departments as $department): ?>
-                        <option value="<?php echo $department['id']; ?>">
-                            <?php echo htmlspecialchars($department['name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <!-- Section -->
-            <div>
-                <label for="section" class="block text-sm font-medium text-gray-700 mb-1">Section :</label>
-                <input type="text" id="section" name="section" required 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <!-- Matières -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-3">Matières souhaitées (5 maximum) :</label>
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <?php foreach ($subjects as $subject): ?>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="subjects[]" value="<?php echo $subject['id']; ?>" 
-                                   id="subject_<?php echo $subject['id']; ?>" class="subject-select h-4 w-4 text-blue-600">
-                            <label for="subject_<?php echo $subject['id']; ?>" class="ml-2 text-sm text-gray-700">
-                                <?php echo htmlspecialchars($subject['name']); ?>
-                            </label>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- Disponibilités -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-3">Disponibilités :</label>
-                <div class="space-y-4">
-                    <?php
-                    $days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-                    foreach ($days as $index => $day):
-                    ?>
-                        <div class="border border-gray-200 rounded-md p-4">
-                            <label class="inline-flex items-center">
-                                <input type="checkbox" name="days[]" value="<?php echo $index + 1; ?>" 
-                                       class="h-4 w-4 text-blue-600">
-                                <span class="ml-2 font-medium"><?php echo $day; ?></span>
-                            </label>
-                            <div class="time-slots mt-3 grid grid-cols-2 gap-4" style="display: none;">
-                                <div>
-                                    <label class="block text-sm text-gray-600 mb-1">Début :</label>
-                                    <select name="start_time_<?php echo $index + 1; ?>" 
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                                        <?php
-                                        for ($hour = 7; $hour <= 23; $hour++) {
-                                            for ($min = 0; $min < 60; $min += 30) {
-                                                $time = sprintf("%02d:%02d", $hour, $min);
-                                                echo "<option value=\"{$time}\">{$time}</option>";
-                                            }
-                                        }
-                                        ?>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-gray-600 mb-1">Fin :</label>
-                                    <select name="end_time_<?php echo $index + 1; ?>" 
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                                        <?php
-                                        for ($hour = 7; $hour <= 23; $hour++) {
-                                            for ($min = 0; $min < 60; $min += 30) {
-                                                $time = sprintf("%02d:%02d", $hour, $min);
-                                                echo "<option value=\"{$time}\">{$time}</option>";
-                                            }
-                                        }
-                                        ?>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- Bouton de soumission -->
+            <!-- Submit Button -->
             <div class="flex justify-end">
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">
                     S'inscrire comme tuteur
@@ -196,7 +169,7 @@ require_once 'includes/header.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestion des matières (maximum 5)
+    // Subject selection limit
     const subjectCheckboxes = document.querySelectorAll('.subject-select');
     const maxSubjects = 5;
 
@@ -215,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
         checkbox.addEventListener('change', updateSubjectCheckboxes);
     });
 
-    // Gestion des disponibilités
+    // Availability time slots
     document.querySelectorAll('input[name="days[]"]').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const timeSlots = this.closest('.border').querySelector('.time-slots');
@@ -223,14 +196,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Validation du formulaire
+    // Form validation
     document.querySelector('form').addEventListener('submit', function(e) {
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
         const subjects = document.querySelectorAll('.subject-select:checked');
         const days = document.querySelectorAll('input[name="days[]"]:checked');
+        const email = document.getElementById('email').value;
 
         let errors = [];
+
+        if (!email || !email.includes('@')) {
+            errors.push('Veuillez entrer une adresse email valide.');
+        }
 
         if (password !== confirmPassword) {
             errors.push('Les mots de passe ne correspondent pas.');
@@ -259,5 +237,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-</body>
-</html>
+
+<?php require_once 'includes/footer.php'; ?>

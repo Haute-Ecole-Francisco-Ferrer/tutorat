@@ -3,7 +3,7 @@ session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
-// Vérifier si l'utilisateur est connecté et est un tuteur
+// Verify user is logged in and is a tutor
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'tutor') {
     header('Location: login.php');
     exit;
@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION[
 $user_id = $_SESSION['user_id'];
 $db = Database::getInstance()->getConnection();
 
-// Récupérer l'ID du tuteur
+// Get tutor ID
 $stmt = $db->prepare("SELECT id FROM tutors WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $tutor = $stmt->fetch();
@@ -24,11 +24,11 @@ if (!$tutor) {
 
 $tutor_id = $tutor['id'];
 
-// Récupérer les demandes en attente
+// Get pending requests
 $query = "SELECT tr.id, tr.status, tr.created_at,
           u.firstname, u.lastname, u.photo, u.study_level, u.section,
           s.name as subject_name, d.name as department_name,
-          u.phone, u.username
+          u.phone, u.email, tr.message
           FROM tutoring_relationships tr
           JOIN tutees t ON tr.tutee_id = t.id
           JOIN users u ON t.user_id = u.id
@@ -41,11 +41,11 @@ $stmt = $db->prepare($query);
 $stmt->execute([$tutor_id]);
 $pending_requests = $stmt->fetchAll();
 
-// Récupérer les tutorés actifs
+// Get active tutees
 $query = "SELECT tr.id, tr.created_at,
           u.firstname, u.lastname, u.photo, u.study_level, u.section,
           s.name as subject_name, d.name as department_name,
-          u.phone, u.username
+          u.phone, u.email
           FROM tutoring_relationships tr
           JOIN tutees t ON tr.tutee_id = t.id
           JOIN users u ON t.user_id = u.id
@@ -66,7 +66,7 @@ require_once 'includes/header.php';
 
 <div class="container mx-auto px-4 py-8">
     <div class="max-w-4xl mx-auto">
-        <!-- Demandes en attente -->
+        <!-- Pending Requests -->
         <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
             <h2 class="text-xl font-bold mb-4">Demandes en attente</h2>
             <?php if (empty($pending_requests)): ?>
@@ -104,25 +104,33 @@ require_once 'includes/header.php';
                                             <strong>Matière :</strong> <?php echo htmlspecialchars($request['subject_name']); ?>
                                         </p>
                                         <p class="text-gray-600 mt-1">
-                                            <strong>Email :</strong> <?php echo htmlspecialchars($request['username']); ?><br>
+                                            <strong>Email :</strong> <?php echo htmlspecialchars($request['email']); ?><br>
                                             <strong>Téléphone :</strong> <?php echo htmlspecialchars($request['phone']); ?>
                                         </p>
-                                        <p class="text-sm text-gray-500 mt-1">
+                                        <?php if ($request['message']): ?>
+                                            <div class="mt-2 p-3 bg-gray-50 rounded">
+                                                <p class="text-sm text-gray-700">
+                                                    <strong>Message :</strong><br>
+                                                    <?php echo nl2br(htmlspecialchars($request['message'])); ?>
+                                                </p>
+                                            </div>
+                                        <?php endif; ?>
+                                        <p class="text-sm text-gray-500 mt-2">
                                             Demande reçue le <?php echo date('d/m/Y à H:i', strtotime($request['created_at'])); ?>
                                         </p>
                                     </div>
                                 </div>
                                 <div class="flex-shrink-0">
-                                    <form method="POST" class="inline">
-                                        <input type="hidden" name="relationship_id" value="<?php echo $request['id']; ?>">
+                                    <form method="POST" action="process-tutoring-request.php" class="inline">
+                                        <input type="hidden" name="request_id" value="<?php echo $request['id']; ?>">
                                         <input type="hidden" name="action" value="accept">
                                         <button type="submit" 
                                                 class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mr-2">
                                             Accepter
                                         </button>
                                     </form>
-                                    <form method="POST" class="inline">
-                                        <input type="hidden" name="relationship_id" value="<?php echo $request['id']; ?>">
+                                    <form method="POST" action="process-tutoring-request.php" class="inline">
+                                        <input type="hidden" name="request_id" value="<?php echo $request['id']; ?>">
                                         <input type="hidden" name="action" value="reject">
                                         <button type="submit" 
                                                 class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
@@ -137,7 +145,7 @@ require_once 'includes/header.php';
             <?php endif; ?>
         </div>
 
-        <!-- Tutorés actifs -->
+        <!-- Active Tutees -->
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h2 class="text-xl font-bold mb-4">Mes tutorés actuels</h2>
             <?php if (empty($active_tutees)): ?>
@@ -174,7 +182,7 @@ require_once 'includes/header.php';
                                         <strong>Matière :</strong> <?php echo htmlspecialchars($tutee['subject_name']); ?>
                                     </p>
                                     <p class="text-gray-600 mt-1">
-                                        <strong>Email :</strong> <?php echo htmlspecialchars($tutee['username']); ?><br>
+                                        <strong>Email :</strong> <?php echo htmlspecialchars($tutee['email']); ?><br>
                                         <strong>Téléphone :</strong> <?php echo htmlspecialchars($tutee['phone']); ?>
                                     </p>
                                 </div>

@@ -13,7 +13,12 @@ class Database {
         'dbname' => 'tutorat', 
         'username' => 'root',
         'password' => 'root',
+        // 'dbname' => 'uhti7837_tutorat', 
+        // 'username' => 'uhti7837_tutorat',
+        // 'password' => 'O;i92](_Tu*8',
         'charset' => 'utf8mb4'
+
+        
     ];
 
     // PDO options

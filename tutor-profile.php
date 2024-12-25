@@ -2,62 +2,69 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/validation/profile-validation.php';
+require_once 'includes/components/profile-form.php';
 
-// Vérifier si l'utilisateur est connecté
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'tutor') {
+// Verify user is logged in and is a tutor
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'tutor') {
     header('Location: login.php');
     exit;
 }
 
 $user_id = $_SESSION['user_id'];
 $db = Database::getInstance()->getConnection();
+$error_message = "";
+$success_message = "";
 
-// Requête pour obtenir les informations du tuteur et son département
-$query = "SELECT u.*, t.id as tutor_id, t.max_tutees, t.current_tutees, d.name as department_name 
-          FROM users u 
-          JOIN tutors t ON u.id = t.user_id 
-          JOIN departments d ON u.department_id = d.id 
-          WHERE u.id = ?";
-
+// Get user data
 try {
-    $stmt = $db->prepare($query);
+    $stmt = $db->prepare("
+        SELECT u.*, t.id as tutor_id, t.current_tutees, d.name as department_name 
+        FROM users u 
+        JOIN tutors t ON u.id = t.user_id 
+        JOIN departments d ON u.department_id = d.id 
+        WHERE u.id = ?
+    ");
     $stmt->execute([$user_id]);
-    $tutor = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$tutor) {
+    $user = $stmt->fetch();
+
+    if (!$user) {
         header('Location: index.php');
         exit;
     }
 
-    // Obtenir les matières du tuteur
-    $query = "SELECT s.name 
-              FROM subjects s 
-              JOIN tutor_subjects ts ON s.id = ts.subject_id 
-              WHERE ts.tutor_id = ?";
-    $stmt = $db->prepare($query);
-    $stmt->execute([$tutor['tutor_id']]);
+    // Get tutor's subjects
+    $stmt = $db->prepare("
+        SELECT s.name 
+        FROM subjects s 
+        JOIN tutor_subjects ts ON s.id = ts.subject_id 
+        WHERE ts.tutor_id = ?
+    ");
+    $stmt->execute([$user['tutor_id']]);
     $subjects = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    // Obtenir les disponibilités du tuteur
-    $query = "SELECT day_of_week, DATE_FORMAT(start_time, '%H:%i') as start_time, 
-              DATE_FORMAT(end_time, '%H:%i') as end_time 
-              FROM availability 
-              WHERE user_id = ? 
-              ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')";
-    $stmt = $db->prepare($query);
+    // Get tutor's availabilities
+    $stmt = $db->prepare("
+        SELECT day_of_week, DATE_FORMAT(start_time, '%H:%i') as start_time, 
+               DATE_FORMAT(end_time, '%H:%i') as end_time 
+        FROM availability 
+        WHERE user_id = ? 
+        ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+    ");
     $stmt->execute([$user_id]);
-    $availabilities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $availabilities = $stmt->fetchAll();
+
+    $departments = get_departments($db);
 
 } catch (PDOException $e) {
     header('Location: index.php');
     exit;
 }
 
-// Définir les variables pour le header
 $currentPage = 'tutor-profile';
 $pageTitle = 'Mon Profil Tuteur';
 
-// Traduction des jours en français
+// Translation array for days
 $days_fr = [
     'Monday' => 'Lundi',
     'Tuesday' => 'Mardi',
@@ -73,43 +80,46 @@ require_once 'includes/header.php';
 
 <div class="container mx-auto px-4 py-8">
     <div class="max-w-4xl mx-auto">
-        <!-- En-tête du profil -->
+        <!-- Profile Header -->
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
             <div class="p-6">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <div class="w-24 h-24 rounded-full overflow-hidden mr-6">
-                            <?php if ($tutor['photo']): ?>
-                                <img src="uploads/<?php echo htmlspecialchars($tutor['photo']); ?>" 
+                            <?php if ($user['photo']): ?>
+                                <img src="uploads/<?php echo htmlspecialchars($user['photo']); ?>" 
                                      alt="Photo de profil" 
                                      class="w-full h-full object-cover">
                             <?php else: ?>
                                 <div class="w-full h-full bg-gray-200 flex items-center justify-center">
                                     <span class="text-3xl text-gray-500">
-                                        <?php echo strtoupper(substr($tutor['firstname'], 0, 1)) . strtoupper(substr($tutor['lastname'], 0, 1)); ?>
+                                        <?php echo strtoupper(substr($user['firstname'], 0, 1)) . strtoupper(substr($user['lastname'], 0, 1)); ?>
                                     </span>
                                 </div>
                             <?php endif; ?>
                         </div>
                         <div>
                             <h1 class="text-2xl font-bold">
-                                <?php echo htmlspecialchars($tutor['firstname'] . ' ' . $tutor['lastname']); ?>
+                                <?php echo htmlspecialchars($user['firstname'] . ' ' . $user['lastname']); ?>
                             </h1>
                             <p class="text-gray-600">
-                                <?php echo htmlspecialchars($tutor['department_name']); ?> - 
-                                <?php echo htmlspecialchars($tutor['section']); ?>
+                                <?php echo htmlspecialchars($user['department_name']); ?> - 
+                                <?php echo htmlspecialchars($user['section']); ?>
                             </p>
                             <p class="text-gray-600">
-                                <?php echo htmlspecialchars($tutor['study_level']); ?>
+                                <?php echo htmlspecialchars($user['study_level']); ?>
+                            </p>
+                            <p class="text-gray-600">
+                                <?php echo htmlspecialchars($user['email']); ?>
                             </p>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-sm text-gray-600">
-                            Tutorés actuels: <?php echo $tutor['current_tutees']; ?>/<?php echo $tutor['max_tutees']; ?>
+                        <p class="text-sm text-gray-600 mb-2">
+                            Tutorés actuels: <?php echo $user['current_tutees']; ?>/4
                         </p>
                         <a href="edit-profile.php" 
-                           class="inline-block mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                           class="inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
                             Modifier mon profil
                         </a>
                     </div>
@@ -117,7 +127,7 @@ require_once 'includes/header.php';
             </div>
         </div>
 
-        <!-- Matières -->
+        <!-- Subjects -->
         <div class="mt-6 bg-white rounded-lg shadow-lg p-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">Matières enseignées</h2>
@@ -139,7 +149,7 @@ require_once 'includes/header.php';
             <?php endif; ?>
         </div>
 
-        <!-- Disponibilités -->
+        <!-- Availabilities -->
         <div class="mt-6 bg-white rounded-lg shadow-lg p-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">Disponibilités</h2>

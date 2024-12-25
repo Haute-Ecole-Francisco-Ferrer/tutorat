@@ -1,19 +1,15 @@
 <?php
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/queries/relationship-queries.php';
+require_once 'includes/email/mailer.php';
 
 session_start();
 
-// Vérifier si l'utilisateur est connecté
+// Redirect if not logged in
 if (!isset($_SESSION['user_id'])) {
     $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
     header('Location: login.php');
-    exit();
-}
-
-// Vérifier si un ID de tuteur est fourni
-if (!isset($_GET['id'])) {
-    header('Location: all-tutors.php');
     exit();
 }
 
@@ -23,9 +19,58 @@ $error_message = "";
 $success_message = "";
 
 $db = Database::getInstance()->getConnection();
-$tutor_id = (int)$_GET['id'];
+$tutor_id = filter_var($_GET['id'] ?? 0, FILTER_VALIDATE_INT);
 
-// Récupérer les informations du tuteur
+// Process form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $subject_id = filter_var($_POST['subject_id'], FILTER_VALIDATE_INT);
+        $message = trim($_POST['message']);
+
+        if (!$subject_id) {
+            throw new Exception("Veuillez sélectionner une matière.");
+        }
+        if (empty($message)) {
+            throw new Exception("Veuillez écrire un message.");
+        }
+
+        $db->beginTransaction();
+
+        // Get tutee ID
+        $stmt = $db->prepare("SELECT id FROM tutees WHERE user_id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $tutee = $stmt->fetch();
+
+        // Get tutor details
+        $stmt = $db->prepare("
+            SELECT t.id as tutor_id, u.email, u.username
+            FROM tutors t
+            JOIN users u ON t.user_id = u.id
+            WHERE u.id = ?
+        ");
+        $stmt->execute([$tutor_id]);
+        $tutor = $stmt->fetch();
+
+        // Create tutoring request
+        createTutoringRequest($db, $tutor['tutor_id'], $tutee['id'], $subject_id, $message);
+
+        // Send email to tutor
+        sendTutorRequestEmail(
+            $tutor['email'],
+            $_SESSION['username'],
+            $message
+        );
+
+        $db->commit();
+        $success_message = "Votre demande a été envoyée au tuteur.";
+
+    } catch (Exception $e) {
+        $db->rollBack();
+        $error_message = $e->getMessage();
+    }
+}
+
+// Get tutor information for display
 try {
     $stmt = $db->prepare("
         SELECT 
@@ -33,40 +78,21 @@ try {
             d.name as department_name,
             GROUP_CONCAT(DISTINCT s.name) as subjects,
             GROUP_CONCAT(DISTINCT s.id) as subject_ids,
-            (
-                SELECT COUNT(*)
-                FROM tutoring_relationships tr
-                WHERE tr.tutor_id = t.id
-                AND tr.status = 'accepted'
-            ) as current_tutees
+            t.id as tutor_id,
+            t.current_tutees
         FROM users u
-        INNER JOIN departments d ON u.department_id = d.id
-        INNER JOIN tutors t ON u.id = t.user_id
+        JOIN departments d ON u.department_id = d.id
+        JOIN tutors t ON u.id = t.user_id
         LEFT JOIN tutor_subjects ts ON t.id = ts.tutor_id
         LEFT JOIN subjects s ON ts.subject_id = s.id
         WHERE u.id = ? AND u.user_type = 'tutor'
         GROUP BY u.id
     ");
-    
     $stmt->execute([$tutor_id]);
     $tutor = $stmt->fetch();
 
-    if (!$tutor) {
+    if (!$tutor || $tutor['current_tutees'] >= 4) {
         header('Location: all-tutors.php');
-        exit();
-    }
-
-    // Vérifier si le tuteur est dans le même département
-    if ($tutor['department_id'] != $_SESSION['department_id']) {
-        header('Location: all-tutors.php');
-        $error_message = "Vous ne pouvez contacter que les tuteurs de votre département.";
-        exit();
-    }
-
-    // Vérifier si le tuteur est déjà complet
-    if ($tutor['current_tutees'] >= 4) {
-        header('Location: all-tutors.php');
-        $error_message = "Ce tuteur a déjà atteint son nombre maximum de tutorés.";
         exit();
     }
 
@@ -75,49 +101,12 @@ try {
     exit();
 }
 
-// Traitement du formulaire
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $subject_id = filter_var($_POST['subject_id'], FILTER_VALIDATE_INT);
-    $message = trim($_POST['message']);
-
-    if (!$subject_id) {
-        $error_message = "Veuillez sélectionner une matière.";
-    } elseif (empty($message)) {
-        $error_message = "Veuillez écrire un message.";
-    } else {
-        try {
-            // Vérifier si une demande existe déjà
-            $stmt = $db->prepare("
-                SELECT id FROM tutoring_relationships 
-                WHERE tutor_id = ? AND tutee_id = ? AND subject_id = ? 
-                AND status IN ('pending', 'accepted')
-            ");
-            $stmt->execute([$tutor['id'], $_SESSION['user_id'], $subject_id]);
-            
-            if ($stmt->rowCount() > 0) {
-                $error_message = "Une demande est déjà en cours pour cette matière avec ce tuteur.";
-            } else {
-                // Créer la demande
-                $stmt = $db->prepare("
-                    INSERT INTO tutoring_relationships (tutor_id, tutee_id, subject_id, message, status, created_at)
-                    VALUES (?, ?, ?, ?, 'pending', NOW())
-                ");
-                $stmt->execute([$tutor['id'], $_SESSION['user_id'], $subject_id, $message]);
-                
-                $success_message = "Votre demande a été envoyée au tuteur.";
-            }
-        } catch (PDOException $e) {
-            $error_message = "Une erreur est survenue. Veuillez réessayer.";
-        }
-    }
-}
-
 require_once 'includes/header.php';
 ?>
 
 <main class="container mx-auto px-4 py-8">
     <div class="max-w-2xl mx-auto">
-        <!-- Carte du tuteur -->
+        <!-- Tutor Card -->
         <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
             <div class="md:flex">
                 <div class="md:flex-shrink-0">
@@ -151,7 +140,7 @@ require_once 'includes/header.php';
             </div>
         </div>
 
-        <!-- Formulaire de contact -->
+        <!-- Contact Form -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h3 class="text-xl font-bold text-gray-800 mb-6">Envoyer une demande de tutorat</h3>
 
@@ -213,5 +202,5 @@ require_once 'includes/header.php';
         </div>
     </div>
 </main>
-</body>
-</html>
+
+<?php require_once 'includes/footer.php'; ?>
