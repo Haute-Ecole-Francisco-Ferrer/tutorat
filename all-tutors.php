@@ -1,6 +1,8 @@
 <?php
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/queries/tutor-queries.php';
+require_once 'includes/components/tutor-card.php';
 
 session_start();
 $currentPage = 'all-tutors';
@@ -8,98 +10,24 @@ $pageTitle = 'Tous les Tuteurs';
 
 $db = Database::getInstance()->getConnection();
 
-// Récupération des départements et matières pour les filtres
+// Get departments and subjects for filters
 $departments = get_departments($db);
 $subjects = get_subjects($db);
 
-// Paramètres de filtrage
+// Get filter parameters
 $selected_department = isset($_GET['department']) ? (int)$_GET['department'] : 0;
 $selected_subject = isset($_GET['subject']) ? (int)$_GET['subject'] : 0;
 
-// Traduction des jours en français
-$days_fr = [
-    'Monday' => 'Lundi',
-    'Tuesday' => 'Mardi',
-    'Wednesday' => 'Mercredi',
-    'Thursday' => 'Jeudi',
-    'Friday' => 'Vendredi',
-    'Saturday' => 'Samedi',
-    'Sunday' => 'Dimanche'
-];
-
-// Construction de la requête SQL
-$query = "
-    SELECT 
-        u.id,
-        u.firstname,
-        u.lastname,
-        u.photo,
-        u.username,
-        d.name as department_name,
-        GROUP_CONCAT(DISTINCT s.name) as subjects,
-        GROUP_CONCAT(DISTINCT s.id) as subject_ids,
-        t.id as tutor_id,
-        (
-            SELECT COUNT(*)
-            FROM tutoring_relationships tr
-            WHERE tr.tutor_id = t.id
-            AND tr.status = 'accepted'
-        ) as current_tutees
-    FROM users u
-    INNER JOIN departments d ON u.department_id = d.id
-    INNER JOIN tutors t ON u.id = t.user_id
-    LEFT JOIN tutor_subjects ts ON t.id = ts.tutor_id
-    LEFT JOIN subjects s ON ts.subject_id = s.id
-    WHERE u.user_type = 'tutor'
-";
-
-$params = [];
-
-if ($selected_department) {
-    $query .= " AND u.department_id = ?";
-    $params[] = $selected_department;
-}
-
-if ($selected_subject) {
-    $query .= " AND EXISTS (
-        SELECT 1 FROM tutor_subjects ts2 
-        WHERE ts2.tutor_id = t.id 
-        AND ts2.subject_id = ?
-    )";
-    $params[] = $selected_subject;
-}
-
-$query .= " GROUP BY u.id ORDER BY u.lastname, u.firstname";
-
 try {
-    $stmt = $db->prepare($query);
-    $stmt->execute($params);
-    $tutors = $stmt->fetchAll();
-
-    // Récupérer les disponibilités pour tous les tuteurs
+    // Get filtered tutors
+    $tutors = getFilteredTutors($db, $selected_department, $selected_subject);
+    
+    // Get availabilities for tutors
     $tutor_ids = array_column($tutors, 'id');
-    if (!empty($tutor_ids)) {
-        $availability_query = "
-            SELECT user_id, 
-                   day_of_week, 
-                   DATE_FORMAT(start_time, '%H:%i') as start_time,
-                   DATE_FORMAT(end_time, '%H:%i') as end_time
-            FROM availability
-            WHERE user_id IN (" . implode(',', $tutor_ids) . ")
-            ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
-        ";
-        $stmt = $db->query($availability_query);
-        $availabilities = $stmt->fetchAll();
-
-        // Organiser les disponibilités par tuteur
-        $availability_by_tutor = [];
-        foreach ($availabilities as $availability) {
-            $availability_by_tutor[$availability['user_id']][] = $availability;
-        }
-    }
-
+    $availability_by_tutor = getTutorsAvailabilities($db, $tutor_ids);
 } catch (PDOException $e) {
     $tutors = [];
+    $availability_by_tutor = [];
 }
 
 require_once 'includes/header.php';
@@ -165,81 +93,14 @@ require_once 'includes/header.php';
             </div>
         <?php else: ?>
             <?php foreach ($tutors as $tutor): ?>
-                <div class="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-[1.02] transition-transform duration-200">
-                    <div class="aspect-w-3 aspect-h-2">
-                        <img src="uploads/<?php echo htmlspecialchars($tutor['photo'] ?? 'default.jpg'); ?>" 
-                             alt="Photo de <?php echo htmlspecialchars($tutor['username']); ?>"
-                             class="w-full h-48 object-cover">
-                    </div>
-                    <div class="p-4">
-                        <div class="mb-3">
-                            <h3 class="text-lg font-semibold text-gray-800">
-                                <?php echo htmlspecialchars($tutor['username']); ?>
-                            </h3>
-                            <p class="text-sm text-gray-600"><?php echo htmlspecialchars($tutor['department_name']); ?></p>
-                        </div>
-
-                        <!-- Matières -->
-                        <?php if ($tutor['subjects']): ?>
-                            <div class="mb-4">
-                                <div class="flex flex-wrap gap-1">
-                                    <?php foreach (explode(',', $tutor['subjects']) as $subject): ?>
-                                        <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                            <?php echo htmlspecialchars($subject); ?>
-                                        </span>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
-                        <!-- Disponibilités -->
-                        <div class="mb-4">
-                            <h4 class="text-sm font-medium text-gray-700 mb-2">Disponibilités :</h4>
-                            <?php if (isset($availability_by_tutor[$tutor['id']]) && !empty($availability_by_tutor[$tutor['id']])): ?>
-                                <div class="space-y-1 text-sm">
-                                    <?php foreach ($availability_by_tutor[$tutor['id']] as $availability): ?>
-                                        <div class="flex justify-between text-gray-600">
-                                            <span class="font-medium"><?php echo $days_fr[$availability['day_of_week']]; ?></span>
-                                            <span><?php echo $availability['start_time']; ?> - <?php echo $availability['end_time']; ?></span>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php else: ?>
-                                <p class="text-sm text-gray-500 italic">Aucune disponibilité renseignée</p>
-                            <?php endif; ?>
-                        </div>
-
-                        <!-- Statut et bouton -->
-                        <div class="mt-4 flex justify-between items-center">
-                            <div class="text-sm">
-                                <?php if ($tutor['current_tutees'] >= 4): ?>
-                                    <span class="text-red-600 font-medium">Complet</span>
-                                <?php else: ?>
-                                    <span class="text-green-600 font-medium">
-                                        <?php echo 4 - $tutor['current_tutees']; ?> place(s) disponible(s)
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-                            <?php if ($tutor['current_tutees'] < 4): ?>
-                                <a href="contact-tutor.php?id=<?php echo $tutor['id']; ?>" 
-                                   class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm">
-                                    Contacter
-                                </a>
-                            <?php else: ?>
-                                <span class="inline-block bg-gray-300 text-gray-600 px-4 py-2 rounded text-sm">
-                                    Complet
-                                </span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
+                <?php renderTutorCard($tutor, $availability_by_tutor); ?>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
 </main>
 
 <script>
-// Soumission automatique du formulaire lors du changement de filtre
+// Auto-submit form when filters change
 document.querySelectorAll('select[name="department"], select[name="subject"]').forEach(select => {
     select.addEventListener('change', () => {
         select.closest('form').submit();

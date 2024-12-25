@@ -1,189 +1,226 @@
 <?php
+session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
-session_start();
-
 // Vérifier si l'utilisateur est connecté et est un tutoré
-if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'tutee') {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'tutee') {
     header('Location: login.php');
-    exit();
+    exit;
 }
 
-$currentPage = 'my-tutors';
-$pageTitle = 'Mes Tuteurs';
-
+$user_id = $_SESSION['user_id'];
 $db = Database::getInstance()->getConnection();
-$error_message = "";
-$success_message = "";
 
-// Traitement de l'annulation d'une demande
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['relationship_id'])) {
-    $relationship_id = (int)$_POST['relationship_id'];
-    
-    try {
-        $stmt = $db->prepare("
-            UPDATE tutoring_relationships 
-            SET status = 'cancelled', updated_at = NOW() 
-            WHERE id = ? AND tutee_id = ? AND status = 'pending'
-        ");
-        $stmt->execute([$relationship_id, $_SESSION['role_id']]);
-        $success_message = "La demande a été annulée.";
-    } catch (PDOException $e) {
-        $error_message = "Une erreur est survenue. Veuillez réessayer.";
-    }
+// Récupérer l'ID du tutoré
+$stmt = $db->prepare("SELECT id FROM tutees WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$tutee = $stmt->fetch();
+
+if (!$tutee) {
+    header('Location: index.php');
+    exit;
 }
+
+$tutee_id = $tutee['id'];
 
 // Récupérer les demandes en attente
-$stmt = $db->prepare("
-    SELECT 
-        tr.id as relationship_id,
-        tr.message,
-        tr.created_at,
-        tr.status,
-        u.username,
-        u.photo,
-        s.name as subject_name
-    FROM tutoring_relationships tr
-    JOIN users u ON tr.tutor_id = u.id
-    JOIN subjects s ON tr.subject_id = s.id
-    WHERE tr.tutee_id = ? AND tr.status = 'pending'
-    ORDER BY tr.created_at DESC
-");
-$stmt->execute([$_SESSION['role_id']]);
+$query = "SELECT tr.id, tr.status, tr.created_at, tr.tutee_message, tr.tutor_response,
+          u.firstname, u.lastname, u.photo, u.study_level, u.section,
+          u.username as tutor_email, u.phone,
+          s.name as subject_name, d.name as department_name
+          FROM tutoring_relationships tr
+          JOIN tutors t ON tr.tutor_id = t.id
+          JOIN users u ON t.user_id = u.id
+          JOIN subjects s ON tr.subject_id = s.id
+          JOIN departments d ON u.department_id = d.id
+          WHERE tr.tutee_id = ? AND tr.status = 'pending'
+          ORDER BY tr.created_at DESC";
+
+$stmt = $db->prepare($query);
+$stmt->execute([$tutee_id]);
 $pending_requests = $stmt->fetchAll();
 
-// Récupérer les tuteurs actuels
-$stmt = $db->prepare("
-    SELECT 
-        tr.id as relationship_id,
-        tr.created_at as started_at,
-        u.username,
-        u.photo,
-        s.name as subject_name
-    FROM tutoring_relationships tr
-    JOIN users u ON tr.tutor_id = u.id
-    JOIN subjects s ON tr.subject_id = s.id
-    WHERE tr.tutee_id = ? AND tr.status = 'accepted'
-    ORDER BY tr.created_at DESC
-");
-$stmt->execute([$_SESSION['role_id']]);
-$current_tutors = $stmt->fetchAll();
+// Récupérer les tuteurs actifs
+$query = "SELECT tr.id, tr.created_at, tr.tutee_message, tr.tutor_response,
+          u.firstname, u.lastname, u.photo, u.study_level, u.section,
+          u.username as tutor_email, u.phone,
+          s.name as subject_name, d.name as department_name
+          FROM tutoring_relationships tr
+          JOIN tutors t ON tr.tutor_id = t.id
+          JOIN users u ON t.user_id = u.id
+          JOIN subjects s ON tr.subject_id = s.id
+          JOIN departments d ON u.department_id = d.id
+          WHERE tr.tutee_id = ? AND tr.status = 'accepted'
+          ORDER BY tr.created_at DESC";
+
+$stmt = $db->prepare($query);
+$stmt->execute([$tutee_id]);
+$active_tutors = $stmt->fetchAll();
+
+// Récupérer les demandes refusées récentes (moins de 7 jours)
+$query = "SELECT tr.id, tr.status, tr.updated_at, tr.tutee_message, tr.tutor_response,
+          u.firstname, u.lastname,
+          s.name as subject_name
+          FROM tutoring_relationships tr
+          JOIN tutors t ON tr.tutor_id = t.id
+          JOIN users u ON t.user_id = u.id
+          JOIN subjects s ON tr.subject_id = s.id
+          WHERE tr.tutee_id = ? 
+          AND tr.status = 'rejected'
+          AND tr.updated_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+          ORDER BY tr.updated_at DESC";
+
+$stmt = $db->prepare($query);
+$stmt->execute([$tutee_id]);
+$rejected_requests = $stmt->fetchAll();
+
+$currentPage = 'my-tutors';
+$pageTitle = 'Mes tuteurs';
 
 require_once 'includes/header.php';
 ?>
 
-<main class="container mx-auto px-4 py-8">
+<div class="container mx-auto px-4 py-8">
     <div class="max-w-4xl mx-auto">
-        <?php if ($error_message): ?>
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                <?php echo $error_message; ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($success_message): ?>
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                <?php echo $success_message; ?>
-            </div>
-        <?php endif; ?>
-
         <!-- Demandes en attente -->
-        <section class="mb-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Demandes en attente</h2>
-            
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">Demandes en attente</h2>
             <?php if (empty($pending_requests)): ?>
-                <div class="bg-white rounded-lg shadow-md p-6 text-gray-600">
+                <p class="text-gray-600 text-center py-4">
                     Aucune demande en attente.
-                </div>
+                </p>
             <?php else: ?>
-                <div class="space-y-4">
+                <div class="space-y-6">
                     <?php foreach ($pending_requests as $request): ?>
-                        <div class="bg-white rounded-lg shadow-md p-6">
-                            <div class="flex items-start">
-                                <img src="uploads/<?php echo htmlspecialchars($request['photo'] ?? 'default.jpg'); ?>" 
-                                     alt="Photo de <?php echo htmlspecialchars($request['username']); ?>"
-                                     class="w-12 h-12 rounded-full object-cover mr-4">
-                                <div class="flex-grow">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div>
-                                            <h3 class="font-semibold text-gray-800">
-                                                <?php echo htmlspecialchars($request['username']); ?>
-                                            </h3>
-                                            <p class="text-sm text-gray-600">
-                                                Matière : <?php echo htmlspecialchars($request['subject_name']); ?>
+                        <div class="border rounded-lg p-4">
+                            <div class="flex items-start space-x-4">
+                                <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                                    <?php if ($request['photo']): ?>
+                                        <img src="uploads/<?php echo htmlspecialchars($request['photo']); ?>" 
+                                             alt="Photo de <?php echo htmlspecialchars($request['firstname']); ?>"
+                                             class="w-full h-full object-cover">
+                                    <?php else: ?>
+                                        <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-xl text-gray-500">
+                                                <?php echo strtoupper(substr($request['firstname'], 0, 1) . substr($request['lastname'], 0, 1)); ?>
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-lg">
+                                        <?php echo htmlspecialchars($request['firstname'] . ' ' . $request['lastname']); ?>
+                                    </h3>
+                                    <p class="text-gray-600">
+                                        <?php echo htmlspecialchars($request['department_name']); ?> - 
+                                        <?php echo htmlspecialchars($request['study_level']); ?>
+                                    </p>
+                                    <p class="text-gray-600 mt-1">
+                                        <strong>Matière :</strong> <?php echo htmlspecialchars($request['subject_name']); ?>
+                                    </p>
+                                    <?php if ($request['tutee_message']): ?>
+                                        <div class="mt-2 p-3 bg-gray-50 rounded-md">
+                                            <p class="text-sm text-gray-700">
+                                                <strong>Votre message :</strong><br>
+                                                <?php echo nl2br(htmlspecialchars($request['tutee_message'])); ?>
                                             </p>
                                         </div>
-                                        <span class="text-sm text-gray-500">
-                                            <?php echo date('d/m/Y H:i', strtotime($request['created_at'])); ?>
-                                        </span>
-                                    </div>
-                                    <p class="text-gray-700 mb-4">
-                                        <?php echo nl2br(htmlspecialchars($request['message'])); ?>
+                                    <?php endif; ?>
+                                    <p class="text-sm text-gray-500 mt-2">
+                                        Demande envoyée le <?php echo date('d/m/Y à H:i', strtotime($request['created_at'])); ?>
                                     </p>
-                                    <div class="flex justify-end">
-                                        <form method="POST" class="inline">
-                                            <input type="hidden" name="relationship_id" value="<?php echo $request['relationship_id']; ?>">
-                                            <button type="submit" name="action" value="cancel"
-                                                    class="text-red-600 hover:text-red-800 text-sm font-medium"
-                                                    onclick="return confirm('Êtes-vous sûr de vouloir annuler cette demande ?')">
-                                                Annuler la demande
-                                            </button>
-                                        </form>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-        </section>
+        </div>
 
-        <!-- Tuteurs actuels -->
-        <section>
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Mes tuteurs actuels</h2>
-            
-            <?php if (empty($current_tutors)): ?>
-                <div class="bg-white rounded-lg shadow-md p-6 text-gray-600">
-                    <p class="mb-4">Vous n'avez pas encore de tuteur.</p>
-                    <a href="all-tutors.php" class="text-blue-600 hover:text-blue-800 font-medium">
-                        Rechercher un tuteur →
-                    </a>
-                </div>
+        <!-- Tuteurs actifs -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">Mes tuteurs actuels</h2>
+            <?php if (empty($active_tutors)): ?>
+                <p class="text-gray-600 text-center py-4">
+                    Vous n'avez pas encore de tuteur.
+                </p>
             <?php else: ?>
-                <div class="grid md:grid-cols-2 gap-4">
-                    <?php foreach ($current_tutors as $tutor): ?>
-                        <div class="bg-white rounded-lg shadow-md p-6">
-                            <div class="flex items-center mb-4">
-                                <img src="uploads/<?php echo htmlspecialchars($tutor['photo'] ?? 'default.jpg'); ?>" 
-                                     alt="Photo de <?php echo htmlspecialchars($tutor['username']); ?>"
-                                     class="w-12 h-12 rounded-full object-cover mr-4">
-                                <div>
-                                    <h3 class="font-semibold text-gray-800">
-                                        <?php echo htmlspecialchars($tutor['username']); ?>
+                <div class="space-y-6">
+                    <?php foreach ($active_tutors as $tutor): ?>
+                        <div class="border rounded-lg p-4">
+                            <div class="flex items-start space-x-4">
+                                <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                                    <?php if ($tutor['photo']): ?>
+                                        <img src="uploads/<?php echo htmlspecialchars($tutor['photo']); ?>" 
+                                             alt="Photo de <?php echo htmlspecialchars($tutor['firstname']); ?>"
+                                             class="w-full h-full object-cover">
+                                    <?php else: ?>
+                                        <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-xl text-gray-500">
+                                                <?php echo strtoupper(substr($tutor['firstname'], 0, 1) . substr($tutor['lastname'], 0, 1)); ?>
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="flex-grow">
+                                    <h3 class="font-medium text-lg">
+                                        <?php echo htmlspecialchars($tutor['firstname'] . ' ' . $tutor['lastname']); ?>
                                     </h3>
-                                    <p class="text-sm text-gray-600">
-                                        Matière : <?php echo htmlspecialchars($tutor['subject_name']); ?>
+                                    <p class="text-gray-600">
+                                        <?php echo htmlspecialchars($tutor['department_name']); ?> - 
+                                        <?php echo htmlspecialchars($tutor['study_level']); ?>
                                     </p>
-                                    <span class="text-sm text-gray-500">
-                                        Depuis le <?php echo date('d/m/Y', strtotime($tutor['started_at'])); ?>
-                                    </span>
+                                    <p class="text-gray-600 mt-1">
+                                        <strong>Matière :</strong> <?php echo htmlspecialchars($tutor['subject_name']); ?>
+                                    </p>
+                                    <?php if ($tutor['tutor_response']): ?>
+                                        <div class="mt-2 p-3 bg-green-50 rounded-md">
+                                            <p class="text-sm text-gray-700">
+                                                <strong>Message du tuteur :</strong><br>
+                                                <?php echo nl2br(htmlspecialchars($tutor['tutor_response'])); ?>
+                                            </p>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="mt-3 text-sm text-gray-600">
+                                        <p><strong>Contact :</strong></p>
+                                        <p>Email : <?php echo htmlspecialchars($tutor['tutor_email']); ?></p>
+                                        <p>Téléphone : <?php echo htmlspecialchars($tutor['phone']); ?></p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
-
-                <?php if (count($current_tutors) < 4): ?>
-                    <div class="mt-6 text-center">
-                        <a href="all-tutors.php" 
-                           class="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">
-                            Trouver d'autres tuteurs
-                        </a>
-                    </div>
-                <?php endif; ?>
             <?php endif; ?>
-        </section>
+        </div>
+
+        <!-- Demandes refusées récentes -->
+        <?php if (!empty($rejected_requests)): ?>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Demandes refusées récemment</h2>
+                <div class="space-y-4">
+                    <?php foreach ($rejected_requests as $request): ?>
+                        <div class="border rounded-lg p-4 bg-gray-50">
+                            <p class="text-gray-600">
+                                Votre demande de tutorat en <strong><?php echo htmlspecialchars($request['subject_name']); ?></strong> 
+                                auprès de <strong><?php echo htmlspecialchars($request['firstname'] . ' ' . $request['lastname']); ?></strong>
+                                a été refusée le <?php echo date('d/m/Y', strtotime($request['updated_at'])); ?>.
+                            </p>
+                            <?php if ($request['tutor_response']): ?>
+                                <div class="mt-2 p-3 bg-gray-100 rounded-md">
+                                    <p class="text-sm text-gray-700">
+                                        <strong>Message du tuteur :</strong><br>
+                                        <?php echo nl2br(htmlspecialchars($request['tutor_response'])); ?>
+                                    </p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
-</main>
-</body>
-</html>
+</div>
+
+<?php require_once 'includes/footer.php'; ?>

@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/init.php';
+require_once 'config/database.php'; 
 require_once 'includes/auth_check.php';
 
 // Vérifier si l'utilisateur est un tutoré
