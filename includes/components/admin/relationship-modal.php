@@ -16,6 +16,23 @@ function renderRelationshipModal() {
                     <div id="modalContent" class="space-y-4">
                         <!-- Content will be populated by JavaScript -->
                     </div>
+                    <div class="mt-6 pt-4 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-sm font-medium text-gray-700">Changer le statut :</label>
+                            <div class="flex items-center gap-4">
+                                <select id="modalStatusSelect" 
+                                        class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                    <option value="pending">En attente</option>
+                                    <option value="accepted">Actif</option>
+                                    <option value="archived">Archivé</option>
+                                </select>
+                                <button onclick="updateModalStatus()" 
+                                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm">
+                                    Appliquer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
