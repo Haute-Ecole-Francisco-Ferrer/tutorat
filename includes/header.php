@@ -32,7 +32,7 @@ if(!isset($currentPage)) {
             <div class="flex items-center justify-between">
                 <!-- Logo -->
                 <div class="text-white">
-                    <a href="index.php" class="text-xl font-bold hover:text-gray-300 transition-colors">
+                    <a href="/" class="text-xl font-bold hover:text-gray-300 transition-colors">
                         Plateforme de Tutorat
                     </a>
                 </div>
@@ -82,7 +82,7 @@ if(!isset($currentPage)) {
                                     Messages
                                 </a>
                                 <hr class="my-1 border-gray-200">
-                                <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="/logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     Déconnexion
                                 </a>
                             </div>

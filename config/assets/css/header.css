@@ -1,0 +1,140 @@
+/* Header et Navigation */
+.main-nav {
+    background-color: #2c3e50;
+    padding: 1rem;
+    color: white;
+}
+
+.main-nav .logo h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    padding: 0.5rem 0;
+}
+
+.nav-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 1.5rem;
+}
+
+.nav-links li {
+    position: relative;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    display: block;
+    transition: background-color 0.3s;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    background-color: #34495e;
+    border-radius: 4px;
+}
+
+/* Menu déroulant */
+.dropdown {
+    position: relative;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #2c3e50;
+    min-width: 160px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 4px;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropdown-content li {
+    margin: 0;
+}
+
+.dropdown-content a {
+    padding: 12px 16px;
+}
+
+.dropdown-content a:hover {
+    background-color: #34495e;
+}
+
+/* Style des cartes de fonctionnalités */
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 2rem 0;
+}
+
+.feature-card {
+    background-color: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.feature-card h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.feature-card p {
+    margin-bottom: 1.5rem;
+    color: #666;
+}
+
+/* Section de bienvenue */
+.welcome {
+    text-align: center;
+    padding: 3rem 0;
+    background-color: #f8f9fa;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+}
+
+.welcome h2 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.welcome p {
+    max-width: 800px;
+    margin: 0 auto;
+    color: #666;
+}
+
+/* Pied de page */
+footer {
+    text-align: center;
+    padding: 2rem;
+    background-color: #2c3e50;
+    color: white;
+    margin-top: 3rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nav-links {
+        flex-direction: column;
+    }
+
+    .dropdown-content {
+        position: static;
+        box-shadow: none;
+    }
+
+    .feature-card {
+        margin: 1rem;
+    }
+}

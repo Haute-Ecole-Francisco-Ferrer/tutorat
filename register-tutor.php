@@ -1,7 +1,7 @@
 <?php
 require_once 'config/database.php';
 require_once 'includes/functions.php';
-require_once 'includes/validation/registration-validation.php';
+require_once 'includes/validation/tutor-validation.php';
 
 session_start();
 $currentPage = 'register-tutor';
@@ -10,93 +10,14 @@ $pageTitle = 'Devenir Tuteur';
 $db = Database::getInstance()->getConnection();
 $departments = get_departments($db);
 $subjects = get_subjects($db);
-$error_message = "";
-$success_message = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    try {
-        // Validate registration data
-        $data = validateRegistrationData($_POST, $_FILES);
-        
-        // Check if username or email already exists
-        checkExistingUser($db, $data['username'], $data['email']);
+// Get any error messages from session
+$error_messages = $_SESSION['registration_errors'] ?? [];
+$form_data = $_SESSION['form_data'] ?? [];
 
-        $db->beginTransaction();
-
-        // Insert user
-        $stmt = $db->prepare("
-            INSERT INTO users (
-                firstname, lastname, username, email, password, 
-                photo, phone, study_level, department_id, section, user_type
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'tutor')
-        ");
-        
-        $stmt->execute([
-            $data['firstname'],
-            $data['lastname'],
-            $data['username'],
-            $data['email'],
-            password_hash($data['password'], PASSWORD_DEFAULT),
-            $data['photo'] ?? null,
-            $data['phone'],
-            $data['study_level'],
-            $data['department_id'],
-            $data['section']
-        ]);
-        
-        $user_id = $db->lastInsertId();
-
-        // Create tutor record
-        $stmt = $db->prepare("INSERT INTO tutors (user_id) VALUES (?)");
-        $stmt->execute([$user_id]);
-        $tutor_id = $db->lastInsertId();
-
-        // Add subjects
-        if (isset($_POST["subjects"]) && is_array($_POST["subjects"])) {
-            $stmt = $db->prepare("INSERT INTO tutor_subjects (tutor_id, subject_id) VALUES (?, ?)");
-            foreach ($_POST["subjects"] as $subject_id) {
-                $stmt->execute([$tutor_id, $subject_id]);
-            }
-        }
-
-        // Add availabilities
-        if (isset($_POST["days"]) && is_array($_POST["days"])) {
-            $stmt = $db->prepare("
-                INSERT INTO availability (user_id, day_of_week, start_time, end_time) 
-                VALUES (?, ?, ?, ?)
-            ");
-            
-            foreach ($_POST["days"] as $day) {
-                $start_time = $_POST["start_time_" . $day] ?? null;
-                $end_time = $_POST["end_time_" . $day] ?? null;
-                
-                if ($start_time && $end_time) {
-                    $days_map = [
-                        1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday',
-                        4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday'
-                    ];
-                    
-                    $stmt->execute([
-                        $user_id,
-                        $days_map[$day],
-                        $start_time,
-                        $end_time
-                    ]);
-                }
-            }
-        }
-
-        $db->commit();
-        $success_message = "Inscription réussie ! Vous pouvez maintenant vous connecter.";
-        
-        header("Location: login.php?registered=1");
-        exit();
-
-    } catch (Exception $e) {
-        $db->rollBack();
-        $error_message = $e->getMessage();
-    }
-}
+// Clear session data
+unset($_SESSION['registration_errors']);
+unset($_SESSION['form_data']);
 
 require_once 'includes/header.php';
 ?>
@@ -105,23 +26,29 @@ require_once 'includes/header.php';
     <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-8">
         <h2 class="text-2xl font-bold text-gray-800 mb-6">Devenir Tuteur</h2>
         
-        <?php if ($error_message): ?>
+        <?php if (!empty($error_messages)): ?>
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                <?php echo $error_message; ?>
+                <?php foreach ($error_messages as $error): ?>
+                    <p><?php echo htmlspecialchars($error); ?></p>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
 
-        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        <form method="POST" action="process-tutor-registration.php" enctype="multipart/form-data" class="space-y-6">
             <!-- Personal Information -->
             <div class="grid md:grid-cols-2 gap-6">
                 <div>
                     <label for="firstname" class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
-                    <input type="text" id="firstname" name="firstname" required 
+                    <input type="text" id="firstname" name="firstname" 
+                           value="<?php echo htmlspecialchars($form_data['firstname'] ?? ''); ?>"
+                           required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label for="lastname" class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-                    <input type="text" id="lastname" name="lastname" required 
+                    <input type="text" id="lastname" name="lastname" 
+                           value="<?php echo htmlspecialchars($form_data['lastname'] ?? ''); ?>"
+                           required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
@@ -130,12 +57,16 @@ require_once 'includes/header.php';
             <div class="grid md:grid-cols-2 gap-6">
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Pseudo</label>
-                    <input type="text" id="username" name="username" required 
+                    <input type="text" id="username" name="username" 
+                           value="<?php echo htmlspecialchars($form_data['username'] ?? ''); ?>"
+                           required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="email" name="email" required 
+                    <input type="email" id="email" name="email" 
+                           value="<?php echo htmlspecialchars($form_data['email'] ?? ''); ?>"
+                           required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>

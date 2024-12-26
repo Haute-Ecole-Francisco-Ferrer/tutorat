@@ -30,7 +30,7 @@ function validateRegistrationData($post, $files) {
         throw new Exception("Le mot de passe doit contenir au moins 8 caractères.");
     }
 
-    // Handle photo upload if provided
+    // Handle optional photo upload
     if (isset($files['photo']) && $files['photo']['error'] === UPLOAD_ERR_OK) {
         $upload_result = upload_photo($files['photo']);
         if (isset($upload_result['error'])) {
