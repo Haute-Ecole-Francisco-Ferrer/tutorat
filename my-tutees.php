@@ -53,7 +53,7 @@ $query = "SELECT tr.id, tr.created_at,
           JOIN departments d ON u.department_id = d.id
           WHERE tr.tutor_id = ? AND tr.status = 'accepted'
           ORDER BY u.lastname, u.firstname";
-          
+
 $stmt = $db->prepare($query);
 $stmt->execute([$tutor_id]);
 $active_tutees = $stmt->fetchAll();
@@ -66,6 +66,24 @@ require_once 'includes/header.php';
 
 <div class="container mx-auto px-4 py-8">
     <div class="max-w-4xl mx-auto">
+        <?php if (isset($_SESSION['success_message'])): ?>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                <?php 
+                echo $_SESSION['success_message'];
+                unset($_SESSION['success_message']);
+                ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error_message'])): ?>
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <?php 
+                echo $_SESSION['error_message'];
+                unset($_SESSION['error_message']);
+                ?>
+            </div>
+        <?php endif; ?>
+
         <!-- Pending Requests -->
         <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
             <h2 class="text-xl font-bold mb-4">Demandes en attente</h2>
@@ -110,7 +128,7 @@ require_once 'includes/header.php';
                                         <?php if ($request['message']): ?>
                                             <div class="mt-2 p-3 bg-gray-50 rounded">
                                                 <p class="text-sm text-gray-700">
-                                                    <strong>Message :</strong><br>
+                                                    <strong>Message du tutoré :</strong><br>
                                                     <?php echo nl2br(htmlspecialchars($request['message'])); ?>
                                                 </p>
                                             </div>
@@ -121,21 +139,21 @@ require_once 'includes/header.php';
                                     </div>
                                 </div>
                                 <div class="flex-shrink-0">
-                                    <form method="POST" action="process-tutoring-request.php" class="inline">
+                                    <form method="POST" action="process-tutoring-request.php" class="space-y-2">
                                         <input type="hidden" name="request_id" value="<?php echo $request['id']; ?>">
-                                        <input type="hidden" name="action" value="accept">
-                                        <button type="submit" 
-                                                class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mr-2">
-                                            Accepter
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="process-tutoring-request.php" class="inline">
-                                        <input type="hidden" name="request_id" value="<?php echo $request['id']; ?>">
-                                        <input type="hidden" name="action" value="reject">
-                                        <button type="submit" 
-                                                class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-                                            Refuser
-                                        </button>
+                                        <textarea name="message" 
+                                                  class="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
+                                                  placeholder="Message (optionnel)"></textarea>
+                                        <div class="flex justify-end space-x-2">
+                                            <button type="submit" name="action" value="accept" 
+                                                    class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                                Accepter
+                                            </button>
+                                            <button type="submit" name="action" value="reject" 
+                                                    class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                                                Refuser
+                                            </button>
+                                        </div>
                                     </form>
                                 </div>
                             </div>
@@ -181,10 +199,11 @@ require_once 'includes/header.php';
                                     <p class="text-gray-600 mt-1">
                                         <strong>Matière :</strong> <?php echo htmlspecialchars($tutee['subject_name']); ?>
                                     </p>
-                                    <p class="text-gray-600 mt-1">
-                                        <strong>Email :</strong> <?php echo htmlspecialchars($tutee['email']); ?><br>
-                                        <strong>Téléphone :</strong> <?php echo htmlspecialchars($tutee['phone']); ?>
-                                    </p>
+                                    <div class="mt-3 text-sm text-gray-600">
+                                        <p><strong>Contact :</strong></p>
+                                        <p>Email : <?php echo htmlspecialchars($tutee['email']); ?></p>
+                                        <p>Téléphone : <?php echo htmlspecialchars($tutee['phone']); ?></p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

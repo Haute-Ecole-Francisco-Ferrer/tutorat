@@ -6,12 +6,16 @@ require_once 'includes/email/mailer.php';
 
 session_start();
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+// Verify user is logged in and is a tutor
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'tutor') {
+    header('Location: login.php');
     exit;
 }
 
-$response = ['success' => false];
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: my-tutees.php');
+    exit;
+}
 
 try {
     $db = Database::getInstance()->getConnection();
@@ -51,14 +55,14 @@ try {
     // Check if tutor has reached maximum tutees when accepting
     if ($action === 'accept') {
         $stmt = $db->prepare("
-            SELECT current_tutees 
-            FROM tutors 
-            WHERE id = ?
+            SELECT COUNT(*) as count 
+            FROM tutoring_relationships 
+            WHERE tutor_id = ? AND status = 'accepted'
         ");
         $stmt->execute([$request['tutor_id']]);
-        $tutor = $stmt->fetch();
+        $result = $stmt->fetch();
 
-        if ($tutor['current_tutees'] >= 4) {
+        if ($result['count'] >= 4) {
             throw new Exception('Nombre maximum de tutorés atteint');
         }
     }
@@ -81,14 +85,13 @@ try {
     );
 
     $db->commit();
-    $response['success'] = true;
-    $response['message'] = 'La demande a été ' . ($status === 'accepted' ? 'acceptée' : 'refusée');
+    $_SESSION['success_message'] = 'La demande a été ' . ($status === 'accepted' ? 'acceptée' : 'refusée') . ' avec succès.';
 
 } catch (Exception $e) {
     $db->rollBack();
-    $response['error'] = $e->getMessage();
+    $_SESSION['error_message'] = $e->getMessage();
 }
 
-header('Content-Type: application/json');
-echo json_encode($response);
+header('Location: my-tutees.php');
+exit;
 ?>
