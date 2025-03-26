@@ -116,9 +116,9 @@ require_once '../includes/header.php';
     <!-- Filters -->
     <div class="mb-6">
         <div class="flex gap-4">
-            <button class="filter-btn active bg-blue-500 text-white px-4 py-2 rounded-md transition-colors duration-200" data-status="all">Tous</button>
+            <button class="filter-btn px-4 py-2 rounded-md transition-colors duration-200 hover:bg-gray-100" data-status="all">Tous</button>
             <button class="filter-btn px-4 py-2 rounded-md transition-colors duration-200 hover:bg-gray-100" data-status="pending">En attente</button>
-            <button class="filter-btn px-4 py-2 rounded-md transition-colors duration-200 hover:bg-gray-100" data-status="accepted">Actifs</button>
+            <button class="filter-btn active bg-blue-500 text-white px-4 py-2 rounded-md transition-colors duration-200" data-status="accepted">Actifs</button>
             <button class="filter-btn px-4 py-2 rounded-md transition-colors duration-200 hover:bg-gray-100" data-status="archived">Archivés</button>
         </div>
     </div>

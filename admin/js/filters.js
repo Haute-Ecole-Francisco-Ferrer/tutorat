@@ -6,6 +6,9 @@ export function initializeFilters() {
             filterRelationships(this.dataset.status);
         });
     });
+    
+    // Filter to show only active relationships by default
+    filterRelationships('accepted');
 }
 
 function updateFilterStyles(selectedButton) {
