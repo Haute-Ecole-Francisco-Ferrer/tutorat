@@ -59,10 +59,31 @@ if(!isset($currentPage)) {
 
                     <?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin'): ?>
                         <a href="/admin/subjects.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'subjects' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Matières</a>
-                        <a href="/admin/pending-tutors.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'pending-tutors' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Tuteurs en attente</a>
-                        <a href="/admin/pending-tutees.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'pending-tutees' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Tutorés en attente</a>
-                        <a href="/admin/published-tutors.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'published-tutors' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Tuteurs publiés</a>
-                        <a href="/admin/published-tutees.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'published-tutees' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Tutorés publiés</a>
+                        <a href="/admin/relationships.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'relationships' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Relations</a>
+                        
+                        <!-- Dropdown menu for Tutors -->
+                        <div class="relative dropdown-wrapper">
+                            <button class="text-white px-3 py-2 rounded-md text-sm font-medium <?= in_array($currentPage, ['published-tutors', 'pending-tutors', 'rejected-tutors']) ? 'bg-slate-700' : 'hover:text-gray-300' ?>">
+                                Tuteurs ▼
+                            </button>
+                            <div class="dropdown-menu absolute left-0 hidden w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                <a href="/admin/published-tutors.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 <?= $currentPage === 'published-tutors' ? 'bg-gray-100' : '' ?>">Publiés</a>
+                                <a href="/admin/pending-tutors.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 <?= $currentPage === 'pending-tutors' ? 'bg-gray-100' : '' ?>">En attente</a>
+                                <a href="/admin/rejected-tutors.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 <?= $currentPage === 'rejected-tutors' ? 'bg-gray-100' : '' ?>">Rejetés</a>
+                            </div>
+                        </div>
+                        
+                        <!-- Dropdown menu for Tutees -->
+                        <div class="relative dropdown-wrapper">
+                            <button class="text-white px-3 py-2 rounded-md text-sm font-medium <?= in_array($currentPage, ['published-tutees', 'pending-tutees', 'rejected-tutees']) ? 'bg-slate-700' : 'hover:text-gray-300' ?>">
+                                Tutorés ▼
+                            </button>
+                            <div class="dropdown-menu absolute left-0 hidden w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                <a href="/admin/published-tutees.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 <?= $currentPage === 'published-tutees' ? 'bg-gray-100' : '' ?>">Publiés</a>
+                                <a href="/admin/pending-tutees.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 <?= $currentPage === 'pending-tutees' ? 'bg-gray-100' : '' ?>">En attente</a>
+                                <a href="/admin/rejected-tutees.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 <?= $currentPage === 'rejected-tutees' ? 'bg-gray-100' : '' ?>">Rejetés</a>
+                            </div>
+                        </div>
                     <?php else: ?>
                         <!-- Pages communes -->
                         <a href="/all-tutors.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'all-tutors' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Les Tuteurs</a>
@@ -125,8 +146,24 @@ if(!isset($currentPage)) {
                 </a>
 
                 <?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin'): ?>
-                    <a href="/admin/pending-tutors.php" class="block text-white px-3 py-2 rounded-md text-base font-medium <?= $currentPage === 'pending-tutors' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Tuteurs en attente</a>
-                    <a href="/admin/pending-tutees.php" class="block text-white px-3 py-2 rounded-md text-base font-medium <?= $currentPage === 'pending-tutees' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Tutorés en attente</a>
+                    <a href="/admin/subjects.php" class="block text-white px-3 py-2 rounded-md text-base font-medium <?= $currentPage === 'subjects' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Matières</a>
+                    <a href="/admin/relationships.php" class="block text-white px-3 py-2 rounded-md text-base font-medium <?= $currentPage === 'relationships' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Relations</a>
+                    
+                    <!-- Tutors section -->
+                    <div class="border-t border-gray-700 pt-2 mt-2">
+                        <span class="block text-white px-3 py-2 font-medium">Tuteurs</span>
+                        <a href="/admin/published-tutors.php" class="block text-white px-3 py-2 pl-6 rounded-md text-base font-medium <?= $currentPage === 'published-tutors' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Publiés</a>
+                        <a href="/admin/pending-tutors.php" class="block text-white px-3 py-2 pl-6 rounded-md text-base font-medium <?= $currentPage === 'pending-tutors' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">En attente</a>
+                        <a href="/admin/rejected-tutors.php" class="block text-white px-3 py-2 pl-6 rounded-md text-base font-medium <?= $currentPage === 'rejected-tutors' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Rejetés</a>
+                    </div>
+                    
+                    <!-- Tutees section -->
+                    <div class="border-t border-gray-700 pt-2 mt-2">
+                        <span class="block text-white px-3 py-2 font-medium">Tutorés</span>
+                        <a href="/admin/published-tutees.php" class="block text-white px-3 py-2 pl-6 rounded-md text-base font-medium <?= $currentPage === 'published-tutees' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Publiés</a>
+                        <a href="/admin/pending-tutees.php" class="block text-white px-3 py-2 pl-6 rounded-md text-base font-medium <?= $currentPage === 'pending-tutees' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">En attente</a>
+                        <a href="/admin/rejected-tutees.php" class="block text-white px-3 py-2 pl-6 rounded-md text-base font-medium <?= $currentPage === 'rejected-tutees' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Rejetés</a>
+                    </div>
                 <?php else: ?>
                     <a href="/all-tutors.php" class="block text-white px-3 py-2 rounded-md text-base font-medium <?= $currentPage === 'all-tutors' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Les Tuteurs</a>
                     <a href="/departments.php" class="block text-white px-3 py-2 rounded-md text-base font-medium <?= $currentPage === 'departments' ? 'bg-slate-700' : 'hover:bg-gray-700' ?>">Départements</a>

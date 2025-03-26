@@ -29,12 +29,16 @@ function renderTableRow($rel) {
                     class="text-blue-600 hover:text-blue-900">
                 Détails
             </button>
-            <select onchange="updateStatus('<?php echo $rel['id']; ?>', this.value)"
-                    class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                <option value="pending" <?php echo $rel['status'] === 'pending' ? 'selected' : ''; ?>>En attente</option>
-                <option value="accepted" <?php echo $rel['status'] === 'accepted' ? 'selected' : ''; ?>>Actif</option>
-                <option value="archived" <?php echo $rel['status'] === 'archived' ? 'selected' : ''; ?>>Archivé</option>
-            </select>
+            <?php if (!empty($rel['id'])): ?>
+                <select onchange="updateStatus('<?php echo $rel['id']; ?>', this.value)"
+                        class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <option value="pending" <?php echo $rel['status'] === 'pending' || $rel['status'] === '' ? 'selected' : ''; ?>>En attente</option>
+                    <option value="accepted" <?php echo $rel['status'] === 'accepted' ? 'selected' : ''; ?>>Actif</option>
+                    <option value="archived" <?php echo $rel['status'] === 'archived' ? 'selected' : ''; ?>>Archivé</option>
+                </select>
+            <?php else: ?>
+                <span class="text-gray-500 text-sm italic">ID manquant</span>
+            <?php endif; ?>
         </td>
     </tr>
     <?php

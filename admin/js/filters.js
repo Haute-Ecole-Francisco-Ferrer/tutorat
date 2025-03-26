@@ -19,6 +19,8 @@ function updateFilterStyles(selectedButton) {
 
 function filterRelationships(status) {
     document.querySelectorAll('.relationship-row').forEach(row => {
-        row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+        // Treat empty status as 'pending'
+        const rowStatus = row.dataset.status || 'pending';
+        row.style.display = (status === 'all' || rowStatus === status) ? '' : 'none';
     });
 }

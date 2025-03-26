@@ -116,7 +116,7 @@ try {
     
     $email_message .= "Cordialement,\nL'équipe de la plateforme de tutorat";
     
-    mail($request['tutee_email'], $subject, $email_message);
+    send_utf8_email($request['tutee_email'], $subject, $email_message);
 
     $db->commit();
     $_SESSION['success_message'] = 'La demande a été ' . ($status === 'accepted' ? 'acceptée' : 'refusée') . ' avec succès.';

@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $subject = "Votre compte tutoré a été suspendu";
             $message = "Bonjour,\n\nVotre compte tutoré a été temporairement suspendu. Pour plus d'informations, veuillez contacter le secrétariat.\n\nCordialement,\nLe secrétariat";
             
-            mail($user['email'], $subject, $message);
+            send_utf8_email($user['email'], $subject, $message);
             
             $db->commit();
             $_SESSION['success_message'] = "Le tutoré a été suspendu avec succès.";
@@ -61,6 +61,8 @@ $stmt = $db->prepare("
     JOIN departments d ON u.department_id = d.id
     WHERE u.user_type = 'tutee' 
     AND u.status = 'published'
+    AND u.username != 'admin' 
+    AND u.email NOT LIKE '%admin%'
     ORDER BY d.name, u.lastname, u.firstname
 ");
 $stmt->execute();

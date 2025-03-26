@@ -37,7 +37,9 @@ function getStatusLabel($status) {
             return 'Actif';
         case 'archived':
             return 'Archivé';
+        case '':
+            return 'En attente';
         default:
-            return $status;
+            return $status ?: 'En attente';
     }
 }

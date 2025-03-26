@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $subject = "Votre compte tuteur a été suspendu";
             $message = "Bonjour,\n\nVotre compte tuteur a été temporairement suspendu. Pour plus d'informations, veuillez contacter le secrétariat.\n\nCordialement,\nLe secrétariat";
             
-            mail($user['email'], $subject, $message);
+            send_utf8_email($user['email'], $subject, $message);
             
             $db->commit();
             $_SESSION['success_message'] = "Le tuteur a été suspendu avec succès.";

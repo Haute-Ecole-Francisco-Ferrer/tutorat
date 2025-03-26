@@ -83,6 +83,11 @@ class Database {
      * @return bool True if local, false if remote
      */
     private function isLocalEnvironment(): bool {
+        // Method 0: Check for environment variable (highest priority)
+        if (getenv('DB_ENV') !== false) {
+            return getenv('DB_ENV') === 'local';
+        }
+        
         // Method 1: Check server hostname
         $hostname = gethostname();
         if (strpos($hostname, 'localhost') !== false || 
@@ -101,7 +106,13 @@ class Database {
         $serverName = $_SERVER['SERVER_NAME'] ?? '';
         if ($serverName === 'localhost' || 
             strpos($serverName, '.local') !== false || 
-            strpos($serverName, '.test') !== false) {
+            strpos($serverName, '.test') !== false ||
+            strpos($serverName, 'MAMP') !== false) {
+            return true;
+        }
+        
+        // Method 4: Check for common local file paths
+        if (file_exists('/Applications/MAMP') || file_exists('C:\\MAMP')) {
             return true;
         }
         

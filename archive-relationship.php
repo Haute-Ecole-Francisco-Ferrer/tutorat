@@ -108,7 +108,7 @@ try {
     $message .= "Vous pouvez rechercher un nouveau tuteur sur la plateforme.\n\n";
     $message .= "Cordialement,\nL'équipe de la plateforme de tutorat";
     
-    mail($relationship['tutee_email'], $subject, $message);
+    send_utf8_email($relationship['tutee_email'], $subject, $message);
 
     $db->commit();
     $_SESSION['success_message'] = 'La relation de tutorat a été archivée avec succès.';

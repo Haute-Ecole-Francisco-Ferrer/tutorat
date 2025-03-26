@@ -8,19 +8,41 @@ require_once '../includes/email/mailer.php';
 checkAdminAuth();
 
 $db = Database::getInstance()->getConnection();
-$currentPage = 'pending-tutors';
-$pageTitle = 'Tuteurs en attente';
+$currentPage = 'rejected-tutors';
+$pageTitle = 'Tuteurs rejetés';
 
-// Process approval/rejection/deletion
+// Process actions (restore or delete)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = filter_var($_POST['user_id'] ?? null, FILTER_VALIDATE_INT);
     $action = $_POST['action'] ?? '';
     
-    if ($user_id && in_array($action, ['approve', 'reject', 'delete'])) {
+    if ($user_id) {
         try {
             $db->beginTransaction();
             
-            if ($action === 'delete') {
+            if ($action === 'restore') {
+                // Update user status to pending
+                $stmt = $db->prepare("
+                    UPDATE users 
+                    SET status = 'pending'
+                    WHERE id = ? AND user_type = 'tutor'
+                ");
+                $stmt->execute([$user_id]);
+                
+                // Get user email
+                $stmt = $db->prepare("SELECT email FROM users WHERE id = ?");
+                $stmt->execute([$user_id]);
+                $user = $stmt->fetch();
+                
+                // Send notification email
+                $subject = "Votre compte tuteur a été restauré";
+                $message = "Bonjour,\n\nVotre compte tuteur a été restauré et est en attente de validation. Vous serez notifié lorsqu'il sera approuvé.\n\nCordialement,\nLe secrétariat";
+                
+                send_utf8_email($user['email'], $subject, $message);
+                
+                $db->commit();
+                $_SESSION['success_message'] = "Le tuteur a été restauré avec succès.";
+            } elseif ($action === 'delete') {
                 // Get tutor_id from users table
                 $stmt = $db->prepare("
                     SELECT t.id as tutor_id 
@@ -32,9 +54,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tutor = $stmt->fetch();
                 
                 if ($tutor && $tutor['tutor_id']) {
-                    // Delete related relationships
+                    // Delete related relationships from active relationships
                     $stmt = $db->prepare("
                         DELETE FROM tutoring_relationships 
+                        WHERE tutor_id = ?
+                    ");
+                    $stmt->execute([$tutor['tutor_id']]);
+                    
+                    // Delete related relationships from archive
+                    $stmt = $db->prepare("
+                        DELETE FROM tutoring_relationships_archive 
                         WHERE tutor_id = ?
                     ");
                     $stmt->execute([$tutor['tutor_id']]);
@@ -63,33 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $db->commit();
                 $_SESSION['success_message'] = "Le tuteur a été supprimé avec succès.";
-            } else {
-                // Update user status
-                $stmt = $db->prepare("
-                    UPDATE users 
-                    SET status = ? 
-                    WHERE id = ? AND user_type = 'tutor'
-                ");
-                $stmt->execute([$action === 'approve' ? 'published' : 'rejected', $user_id]);
-                
-                // Get user email
-                $stmt = $db->prepare("SELECT email FROM users WHERE id = ?");
-                $stmt->execute([$user_id]);
-                $user = $stmt->fetch();
-                
-                // Send notification email
-                if ($action === 'approve') {
-                    $subject = "Votre inscription comme tuteur a été approuvée";
-                    $message = "Bonjour,\n\nVotre inscription comme tuteur a été approuvée. Vous pouvez maintenant vous connecter à la plateforme.\n\nCordialement,\nLe secrétariat";
-                } else {
-                    $subject = "Votre inscription comme tuteur a été refusée";
-                    $message = "Bonjour,\n\nVotre inscription comme tuteur a été refusée. Pour plus d'informations, veuillez contacter le secrétariat.\n\nCordialement,\nLe secrétariat";
-                }
-                
-                send_utf8_email($user['email'], $subject, $message);
-                
-                $db->commit();
-                $_SESSION['success_message'] = "Le statut du tuteur a été mis à jour avec succès.";
             }
         } catch (Exception $e) {
             $db->rollBack();
@@ -98,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get pending tutors grouped by department
+// Get rejected tutors grouped by department
 $stmt = $db->prepare("
     SELECT u.*, d.name as department_name,
            GROUP_CONCAT(s.name) as subjects
@@ -108,9 +110,9 @@ $stmt = $db->prepare("
     LEFT JOIN tutor_subjects ts ON t.id = ts.tutor_id
     LEFT JOIN subjects s ON ts.subject_id = s.id
     WHERE u.user_type = 'tutor' 
-    AND u.status = 'pending'
+    AND u.status = 'rejected'
     GROUP BY u.id, d.id
-    ORDER BY d.name, u.created_at DESC
+    ORDER BY d.name, u.lastname, u.firstname
 ");
 $stmt->execute();
 $tutors = $stmt->fetchAll();
@@ -143,11 +145,11 @@ require_once '../includes/header.php';
         </div>
     <?php endif; ?>
 
-    <h1 class="text-2xl font-bold mb-6">Tuteurs en attente de validation</h1>
+    <h1 class="text-2xl font-bold mb-6">Tuteurs rejetés</h1>
 
     <?php if (empty($tutors_by_dept)): ?>
         <div class="bg-white rounded-lg shadow-md p-6">
-            <p class="text-gray-600 text-center">Aucun tuteur en attente de validation.</p>
+            <p class="text-gray-600 text-center">Aucun tuteur rejeté.</p>
         </div>
     <?php else: ?>
         <?php foreach ($tutors_by_dept as $dept_name => $dept_tutors): ?>
@@ -184,24 +186,17 @@ require_once '../includes/header.php';
                                     </p>
                                 </div>
                                 <div class="flex space-x-2">
-                                    <form method="POST" class="inline">
+                                    <form method="POST" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir restaurer ce tuteur ?');">
                                         <input type="hidden" name="user_id" value="<?php echo $tutor['id']; ?>">
-                                        <input type="hidden" name="action" value="approve">
+                                        <input type="hidden" name="action" value="restore">
                                         <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                                            Approuver
+                                            Restaurer
                                         </button>
                                     </form>
-                                    <form method="POST" class="inline">
-                                        <input type="hidden" name="user_id" value="<?php echo $tutor['id']; ?>">
-                                        <input type="hidden" name="action" value="reject">
-                                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-                                            Refuser
-                                        </button>
-                                    </form>
-                                    <form method="POST" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce tuteur ? Cette action est irréversible et supprimera également toutes les relations associées.');">
+                                    <form method="POST" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement ce tuteur ? Cette action est irréversible et supprimera également toutes les relations associées.');">
                                         <input type="hidden" name="user_id" value="<?php echo $tutor['id']; ?>">
                                         <input type="hidden" name="action" value="delete">
-                                        <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900">
+                                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
                                             Supprimer
                                         </button>
                                     </form>
