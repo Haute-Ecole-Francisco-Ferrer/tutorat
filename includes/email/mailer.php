@@ -3,6 +3,36 @@
  * Email utility functions
  */
 
+/**
+ * Send an email with proper UTF-8 encoding
+ * @param string $to Recipient email
+ * @param string $subject Email subject
+ * @param string $body Email body
+ * @param string $from_email Optional sender email
+ * @param string $from_name Optional sender name
+ * @return bool Whether the email was sent successfully
+ */
+function send_utf8_email($to, $subject, $body, $from_email = '', $from_name = 'Plateforme de Tutorat') {
+    // Encode subject for UTF-8
+    $subject = '=?UTF-8?B?'.base64_encode($subject).'?=';
+    
+    // Set headers for UTF-8 and HTML
+    $headers = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-type: text/plain; charset=UTF-8\r\n";
+    
+    // Set From header if provided
+    if (!empty($from_email)) {
+        $from_name = '=?UTF-8?B?'.base64_encode($from_name).'?=';
+        $headers .= "From: {$from_name} <{$from_email}>\r\n";
+    }
+    
+    // Set additional headers
+    $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+    
+    // Send email
+    return mail($to, $subject, $body, $headers);
+}
+
 function sendTutorRequestEmail($tutor_email, $tutee_name, $message) {
     $subject = "Nouvelle demande de tutorat";
     $body = "Bonjour,\n\n";
@@ -12,7 +42,7 @@ function sendTutorRequestEmail($tutor_email, $tutee_name, $message) {
     $body .= "https://tutorat.techniques-graphiques.be/my-tutees.php\n\n";
     $body .= "Cordialement,\nL'équipe de la plateforme de tutorat";
 
-    return mail($tutor_email, $subject, $body);
+    return send_utf8_email($tutor_email, $subject, $body);
 }
 
 function sendTuteeResponseEmail($tutee_email, $tutor_name, $status, $message = '') {
@@ -26,7 +56,7 @@ function sendTuteeResponseEmail($tutee_email, $tutor_name, $status, $message = '
     
     $body .= "Cordialement,\nL'équipe de la plateforme de tutorat";
 
-    return mail($tutee_email, $subject, $body);
+    return send_utf8_email($tutee_email, $subject, $body);
 }
 
 /**
@@ -48,6 +78,6 @@ function sendPasswordResetEmail($email, $user_name, $token) {
     $body .= "Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet e-mail.\n\n";
     $body .= "Cordialement,\nL'équipe de la plateforme de tutorat";
 
-    return mail($email, $subject, $body);
+    return send_utf8_email($email, $subject, $body);
 }
 ?>

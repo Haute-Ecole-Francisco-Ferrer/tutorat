@@ -68,27 +68,35 @@ try {
     $message .= "Le secrétariat va examiner votre demande et vous tiendra informé par email.\n\n";
     $message .= "Cordialement,\nL'équipe de la plateforme de tutorat";
     
-    mail($_POST['email'], $subject, $message);
+    send_utf8_email($_POST['email'], $subject, $message);
 
-    // Send notification to admin
-    $stmt = $db->prepare("
-        SELECT u.email 
-        FROM users u 
-        JOIN admins a ON u.id = a.user_id 
-        WHERE a.department_id = ?
-    ");
+    // Get department name
+    $stmt = $db->prepare("SELECT name FROM departments WHERE id = ?");
     $stmt->execute([$_POST['department_id']]);
-    $admin = $stmt->fetch();
+    $department = $stmt->fetch();
+    $department_name = $department ? $department['name'] : 'Inconnu';
 
-    if ($admin) {
+    // Send notification to all admins
+    $stmt = $db->prepare("
+        SELECT u.email, u.firstname, u.lastname
+        FROM users u 
+        JOIN admins a ON u.id = a.user_id
+    ");
+    $stmt->execute();
+    $admins = $stmt->fetchAll();
+
+    if ($admins) {
         $admin_subject = "Nouvelle inscription tutoré à valider";
         $admin_message = "Une nouvelle inscription comme tutoré est en attente de validation.\n\n";
         $admin_message .= "Nom: " . $_POST['firstname'] . " " . $_POST['lastname'] . "\n";
         $admin_message .= "Email: " . $_POST['email'] . "\n";
-        $admin_message .= "Section: " . $_POST['section'] . "\n\n";
+        $admin_message .= "Section: " . $_POST['section'] . "\n";
+        $admin_message .= "Département: " . $department_name . "\n\n";
         $admin_message .= "Pour valider cette inscription, connectez-vous à l'interface d'administration.";
         
-        mail($admin['email'], $admin_subject, $admin_message);
+        foreach ($admins as $admin) {
+            send_utf8_email($admin['email'], $admin_subject, $admin_message);
+        }
     }
 
     $db->commit();

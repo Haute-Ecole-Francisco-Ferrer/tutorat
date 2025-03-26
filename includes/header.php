@@ -66,7 +66,7 @@ if(!isset($currentPage)) {
                     <?php else: ?>
                         <!-- Pages communes -->
                         <a href="/all-tutors.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'all-tutors' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Les Tuteurs</a>
-                        <a href="/departments.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'departments' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Départements</a>
+                        <!-- <a href="/departments.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'departments' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Départements</a> -->
                     <?php endif; ?>
 
                     <?php if (isset($_SESSION['user_id'])): ?>
@@ -90,9 +90,9 @@ if(!isset($currentPage)) {
                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                         Mon profil
                                     </a>
-                                    <a href="/messages.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <!-- <a href="/messages.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                         Messages
-                                    </a>
+                                    </a> -->
                                 <?php endif; ?>
                                 <hr class="my-1 border-gray-200">
                                 <a href="/logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -104,7 +104,7 @@ if(!isset($currentPage)) {
                         <a href="/login.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'login' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">Connexion</a>
                     <?php endif; ?>
                     
-                    <a href="/faq.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'faq' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">FAQ</a>
+                    <!-- <a href="/faq.php" class="text-white px-3 py-2 rounded-md text-sm font-medium <?= $currentPage === 'faq' ? 'bg-slate-700' : 'hover:text-gray-300' ?>">FAQ</a> -->
                 </div>
 
                 <!-- Menu burger pour mobile -->

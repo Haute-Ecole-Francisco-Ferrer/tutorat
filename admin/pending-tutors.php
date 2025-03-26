@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "Bonjour,\n\nVotre inscription comme tuteur a été refusée. Pour plus d'informations, veuillez contacter le secrétariat.\n\nCordialement,\nLe secrétariat";
             }
             
-            mail($user['email'], $subject, $message);
+            send_utf8_email($user['email'], $subject, $message);
             
             $db->commit();
             $_SESSION['success_message'] = "Le statut du tuteur a été mis à jour avec succès.";
