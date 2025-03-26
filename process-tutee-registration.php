@@ -2,6 +2,7 @@
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/validation/tutee-validation.php';
+require_once 'includes/email/mailer.php';
 
 session_start();
 
@@ -33,12 +34,12 @@ try {
         $photo_filename = $upload_result["filename"];
     }
 
-    // Insert user
+    // Insert user with pending status
     $stmt = $db->prepare("
         INSERT INTO users (
             firstname, lastname, username, email, password, 
-            photo, phone, study_level, department_id, section, user_type
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'tutee')
+            photo, phone, study_level, department_id, section, user_type, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'tutee', 'pending')
     ");
     
     $stmt->execute([
@@ -60,31 +61,34 @@ try {
     $stmt = $db->prepare("INSERT INTO tutees (user_id) VALUES (?)");
     $stmt->execute([$user_id]);
 
-    // Add availabilities
-    if (isset($_POST["days"]) && is_array($_POST["days"])) {
-        $stmt = $db->prepare("
-            INSERT INTO availability (user_id, day_of_week, start_time, end_time) 
-            VALUES (?, ?, ?, ?)
-        ");
+    // Send confirmation email to user
+    $subject = "Inscription comme tutoré en attente de validation";
+    $message = "Bonjour " . $_POST['firstname'] . ",\n\n";
+    $message .= "Votre inscription comme tutoré a bien été enregistrée. ";
+    $message .= "Le secrétariat va examiner votre demande et vous tiendra informé par email.\n\n";
+    $message .= "Cordialement,\nL'équipe de la plateforme de tutorat";
+    
+    mail($_POST['email'], $subject, $message);
+
+    // Send notification to admin
+    $stmt = $db->prepare("
+        SELECT u.email 
+        FROM users u 
+        JOIN admins a ON u.id = a.user_id 
+        WHERE a.department_id = ?
+    ");
+    $stmt->execute([$_POST['department_id']]);
+    $admin = $stmt->fetch();
+
+    if ($admin) {
+        $admin_subject = "Nouvelle inscription tutoré à valider";
+        $admin_message = "Une nouvelle inscription comme tutoré est en attente de validation.\n\n";
+        $admin_message .= "Nom: " . $_POST['firstname'] . " " . $_POST['lastname'] . "\n";
+        $admin_message .= "Email: " . $_POST['email'] . "\n";
+        $admin_message .= "Section: " . $_POST['section'] . "\n\n";
+        $admin_message .= "Pour valider cette inscription, connectez-vous à l'interface d'administration.";
         
-        foreach ($_POST["days"] as $day) {
-            $start_time = $_POST["start_time_" . $day] ?? null;
-            $end_time = $_POST["end_time_" . $day] ?? null;
-            
-            if ($start_time && $end_time) {
-                $days_map = [
-                    1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday',
-                    4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday'
-                ];
-                
-                $stmt->execute([
-                    $user_id,
-                    $days_map[$day],
-                    $start_time,
-                    $end_time
-                ]);
-            }
-        }
+        mail($admin['email'], $admin_subject, $admin_message);
     }
 
     $db->commit();

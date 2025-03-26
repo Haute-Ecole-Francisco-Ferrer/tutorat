@@ -51,11 +51,6 @@ function validateTuteeRegistration($post, $files) {
         $errors[] = "Le département sélectionné n'est pas valide.";
     }
 
-    // Availability validation
-    if (empty($post['days']) || !is_array($post['days'])) {
-        $errors[] = "Veuillez sélectionner au moins une disponibilité.";
-    }
-
     // Photo validation if provided
     if (isset($files['photo']) && $files['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
         $allowed_types = ['image/jpeg', 'image/png'];

@@ -16,9 +16,17 @@ function renderTutorCard($tutor, $availability_by_tutor = []) {
                 <!-- Left column with photo and basic info -->
                 <div class="flex flex-col items-center w-1/3">
                     <div class="w-24 h-24 rounded-full overflow-hidden mb-3">
-                        <img src="uploads/<?php echo $tutor['photo'] ? htmlspecialchars($tutor['photo']) : 'avatar.jpg'; ?>" 
-                             alt="Photo de <?php echo htmlspecialchars($tutor['username']); ?>"
-                             class="w-full h-full object-cover">
+                        <?php if ($tutor['photo']): ?>
+                            <img src="uploads/<?php echo htmlspecialchars($tutor['photo']); ?>" 
+                                 alt="Photo de <?php echo htmlspecialchars($tutor['username']); ?>"
+                                 class="w-full h-full object-cover">
+                        <?php else: ?>
+                            <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                <span class="text-2xl text-gray-500">
+                                    <?php echo strtoupper(substr($tutor['firstname'], 0, 1) . substr($tutor['lastname'], 0, 1)); ?>
+                                </span>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <h3 class="text-lg font-semibold text-gray-800 text-center">
                         <?php echo htmlspecialchars($tutor['username']); ?>

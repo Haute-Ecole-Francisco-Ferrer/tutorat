@@ -115,6 +115,10 @@ require_once 'includes/header.php';
                 </button>
                 
                 <div class="text-center text-sm text-gray-600">
+                    <a href="forgot-password.php" class="text-blue-600 hover:underline">Mot de passe oublié ?</a>
+                </div>
+                
+                <div class="text-center text-sm text-gray-600">
                     Pas encore inscrit ?
                     <div class="mt-2 space-x-4">
                         <a href="register-tutor.php" class="text-blue-600 hover:underline">Devenir tuteur</a>

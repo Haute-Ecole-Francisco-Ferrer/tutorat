@@ -141,8 +141,89 @@ require_once 'includes/header.php';
             </div>
         <?php endif; ?>
 
-        <?php renderTutorProfileCard($tutor); ?>
-        <?php renderContactForm($tutor, $subjects); ?>
+        <!-- Tutor Profile Card -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+            <div class="md:flex">
+                <div class="md:flex-shrink-0">
+                    <?php if ($tutor['photo']): ?>
+                        <img src="uploads/<?php echo htmlspecialchars($tutor['photo']); ?>" 
+                             alt="Photo de <?php echo htmlspecialchars($tutor['username']); ?>"
+                             class="h-48 w-full md:w-48 object-cover">
+                    <?php else: ?>
+                        <div class="h-48 w-full md:w-48 bg-gray-200 flex items-center justify-center">
+                            <span class="text-4xl text-gray-500">
+                                <?php echo strtoupper(substr($tutor['firstname'], 0, 1) . substr($tutor['lastname'], 0, 1)); ?>
+                            </span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                        <?php echo htmlspecialchars($tutor['username']); ?>
+                    </h2>
+                    <p class="text-gray-600 mb-4"><?php echo htmlspecialchars($tutor['department_name']); ?></p>
+                    
+                    <?php if ($tutor['subjects']): ?>
+                        <div class="mb-4">
+                            <h3 class="text-sm font-semibold text-gray-700 mb-2">Matières :</h3>
+                            <div class="flex flex-wrap gap-1">
+                                <?php foreach (explode(',', $tutor['subjects']) as $subject): ?>
+                                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                        <?php echo htmlspecialchars($subject); ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <p class="text-sm text-gray-600">
+                        <span class="font-medium"><?php echo 4 - $tutor['current_tutees']; ?></span> place(s) disponible(s)
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-6">Envoyer une demande de tutorat</h3>
+
+            <form method="POST" class="space-y-6">
+                <div>
+                    <label for="subject_id" class="block text-sm font-medium text-gray-700 mb-1">
+                        Matière souhaitée :
+                    </label>
+                    <select name="subject_id" id="subject_id" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Sélectionnez une matière</option>
+                        <?php foreach ($subjects as $subject): ?>
+                            <option value="<?php echo $subject['id']; ?>">
+                                <?php echo htmlspecialchars($subject['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="message" class="block text-sm font-medium text-gray-700 mb-1">
+                        Message pour le tuteur :
+                    </label>
+                    <textarea name="message" id="message" rows="4" required
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Expliquez brièvement vos besoins et vos attentes..."></textarea>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <a href="all-tutors.php" 
+                       class="text-gray-600 hover:text-gray-800">
+                        Retour à la liste
+                    </a>
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                        Envoyer la demande
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </main>
 

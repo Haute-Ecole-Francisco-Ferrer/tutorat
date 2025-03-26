@@ -8,17 +8,20 @@ class Database {
     private ?PDO $connection = null;
     
     // Database configuration
-    private const DB_CONFIG = [
+    private const LOCAL_CONFIG = [
         'host' => 'localhost',
         'dbname' => 'tutorat', 
         'username' => 'root',
         'password' => 'root',
-        // 'dbname' => 'uhti7837_tutorat', 
-        // 'username' => 'uhti7837_tutorat',
-        // 'password' => 'O;i92](_Tu*8',
         'charset' => 'utf8mb4'
-
-        
+    ];
+    
+    private const REMOTE_CONFIG = [
+        'host' => 'localhost',
+        'dbname' => 'uhti7837_tutorat', 
+        'username' => 'uhti7837_tutorat',
+        'password' => 'O;i92](_Tu*8',
+        'charset' => 'utf8mb4'
     ];
 
     // PDO options
@@ -49,23 +52,61 @@ class Database {
 
     private function connect(): void {
         try {
+            // Determine if we're on local or remote environment
+            $isLocal = $this->isLocalEnvironment();
+            $config = $isLocal ? self::LOCAL_CONFIG : self::REMOTE_CONFIG;
+            
             $dsn = sprintf(
                 "mysql:host=%s;dbname=%s;charset=%s",
-                self::DB_CONFIG['host'],
-                self::DB_CONFIG['dbname'],
-                self::DB_CONFIG['charset']
+                $config['host'],
+                $config['dbname'],
+                $config['charset']
             );
 
             $this->connection = new PDO(
                 $dsn,
-                self::DB_CONFIG['username'],
-                self::DB_CONFIG['password'],
+                $config['username'],
+                $config['password'],
                 self::PDO_OPTIONS
             );
+            
+            // Add debug log
+            error_log("Database connection successful (Environment: " . ($isLocal ? "Local" : "Remote") . ")");
         } catch (PDOException $e) {
             error_log("Database connection error: " . $e->getMessage());
             throw new PDOException("Unable to connect to database. Please try again later.");
         }
+    }
+
+    /**
+     * Determine if we're running in a local environment
+     * @return bool True if local, false if remote
+     */
+    private function isLocalEnvironment(): bool {
+        // Method 1: Check server hostname
+        $hostname = gethostname();
+        if (strpos($hostname, 'localhost') !== false || 
+            strpos($hostname, 'DESKTOP') !== false || 
+            strpos($hostname, 'MacBook') !== false) {
+            return true;
+        }
+        
+        // Method 2: Check server IP
+        $serverAddr = $_SERVER['SERVER_ADDR'] ?? '';
+        if ($serverAddr === '127.0.0.1' || $serverAddr === '::1') {
+            return true;
+        }
+        
+        // Method 3: Check if running on localhost domain
+        $serverName = $_SERVER['SERVER_NAME'] ?? '';
+        if ($serverName === 'localhost' || 
+            strpos($serverName, '.local') !== false || 
+            strpos($serverName, '.test') !== false) {
+            return true;
+        }
+        
+        // Default to remote if we can't determine
+        return false;
     }
 
     private function __clone() {}

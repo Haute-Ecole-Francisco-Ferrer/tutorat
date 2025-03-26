@@ -9,7 +9,6 @@ $pageTitle = 'Devenir Tutoré';
 
 $db = Database::getInstance()->getConnection();
 $departments = get_departments($db);
-$subjects = get_subjects($db);
 
 // Get any error messages from session
 $error_messages = $_SESSION['registration_errors'] ?? [];
@@ -85,8 +84,57 @@ require_once 'includes/header.php';
                 </div>
             </div>
 
-            <!-- Contact and Academic Information -->
-            <?php require 'includes/components/registration-fields.php'; ?>
+            <!-- Photo -->
+            <div>
+                <label for="photo" class="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+                <input type="file" id="photo" name="photo" accept="image/*" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="mt-1 text-xs text-gray-500">Format accepté : JPG, PNG (max 5MB)</p>
+            </div>
+
+            <!-- Phone -->
+            <div>
+                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                <input type="tel" id="phone" name="phone" required pattern="[0-9]{10}"
+                       value="<?php echo htmlspecialchars($form_data['phone'] ?? ''); ?>"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Study Level -->
+            <div>
+                <label for="study_level" class="block text-sm font-medium text-gray-700 mb-1">Niveau d'études</label>
+                <select id="study_level" name="study_level" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Sélectionnez votre niveau</option>
+                    <option value="Bloc 1" <?php echo ($form_data['study_level'] ?? '') === 'Bloc 1' ? 'selected' : ''; ?>>Bloc 1</option>
+                    <option value="Bloc 2 - poursuite d'études" <?php echo ($form_data['study_level'] ?? '') === "Bloc 2 - poursuite d'études" ? 'selected' : ''; ?>>Bloc 2 - poursuite d'études</option>
+                    <option value="Bloc 2 - année diplômante" <?php echo ($form_data['study_level'] ?? '') === "Bloc 2 - année diplômante" ? 'selected' : ''; ?>>Bloc 2 - année diplômante</option>
+                    <option value="Master" <?php echo ($form_data['study_level'] ?? '') === 'Master' ? 'selected' : ''; ?>>Master</option>
+                </select>
+            </div>
+
+            <!-- Department -->
+            <div>
+                <label for="department_id" class="block text-sm font-medium text-gray-700 mb-1">Département</label>
+                <select id="department_id" name="department_id" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Sélectionnez votre département</option>
+                    <?php foreach ($departments as $department): ?>
+                        <option value="<?php echo $department['id']; ?>" 
+                                <?php echo ($form_data['department_id'] ?? '') == $department['id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($department['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- Section -->
+            <div>
+                <label for="section" class="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                <input type="text" id="section" name="section" required 
+                       value="<?php echo htmlspecialchars($form_data['section'] ?? ''); ?>"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
 
             <!-- Submit Button -->
             <div class="flex justify-end">
@@ -100,19 +148,10 @@ require_once 'includes/header.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Availability time slots
-    document.querySelectorAll('input[name="days[]"]').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const timeSlots = this.closest('.border').querySelector('.time-slots');
-            timeSlots.style.display = this.checked ? 'grid' : 'none';
-        });
-    });
-
     // Form validation
     document.querySelector('form').addEventListener('submit', function(e) {
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
-        const days = document.querySelectorAll('input[name="days[]"]:checked');
         const email = document.getElementById('email').value;
 
         let errors = [];
@@ -127,10 +166,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (password.length < 8) {
             errors.push('Le mot de passe doit contenir au moins 8 caractères.');
-        }
-
-        if (days.length === 0) {
-            errors.push('Veuillez sélectionner au moins une disponibilité.');
         }
 
         if (errors.length > 0) {

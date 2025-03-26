@@ -9,7 +9,6 @@ $pageTitle = 'Devenir Tuteur';
 
 $db = Database::getInstance()->getConnection();
 $departments = get_departments($db);
-$subjects = get_subjects($db);
 
 // Get any error messages from session
 $error_messages = $_SESSION['registration_errors'] ?? [];
@@ -85,8 +84,114 @@ require_once 'includes/header.php';
                 </div>
             </div>
 
-            <!-- Contact and Academic Information -->
-            <?php require 'includes/components/registration-fields.php'; ?>
+            <!-- Photo -->
+            <div>
+                <label for="photo" class="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+                <input type="file" id="photo" name="photo" accept="image/*" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="mt-1 text-xs text-gray-500">Format accepté : JPG, PNG (max 5MB)</p>
+            </div>
+
+            <!-- Phone -->
+            <div>
+                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                <input type="tel" id="phone" name="phone" required pattern="[0-9]{10}"
+                       value="<?php echo htmlspecialchars($form_data['phone'] ?? ''); ?>"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Study Level -->
+            <div>
+                <label for="study_level" class="block text-sm font-medium text-gray-700 mb-1">Niveau d'études</label>
+                <select id="study_level" name="study_level" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Sélectionnez votre niveau</option>
+                    <option value="Bloc 1" <?php echo ($form_data['study_level'] ?? '') === 'Bloc 1' ? 'selected' : ''; ?>>Bloc 1</option>
+                    <option value="Bloc 2 - poursuite d'études" <?php echo ($form_data['study_level'] ?? '') === "Bloc 2 - poursuite d'études" ? 'selected' : ''; ?>>Bloc 2 - poursuite d'études</option>
+                    <option value="Bloc 2 - année diplômante" <?php echo ($form_data['study_level'] ?? '') === "Bloc 2 - année diplômante" ? 'selected' : ''; ?>>Bloc 2 - année diplômante</option>
+                    <option value="Master" <?php echo ($form_data['study_level'] ?? '') === 'Master' ? 'selected' : ''; ?>>Master</option>
+                </select>
+            </div>
+
+            <!-- Department -->
+            <div>
+                <label for="department_id" class="block text-sm font-medium text-gray-700 mb-1">Département</label>
+                <select id="department_id" name="department_id" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Sélectionnez votre département</option>
+                    <?php foreach ($departments as $department): ?>
+                        <option value="<?php echo $department['id']; ?>" 
+                                <?php echo ($form_data['department_id'] ?? '') == $department['id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($department['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- Section -->
+            <div>
+                <label for="section" class="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                <input type="text" id="section" name="section" required 
+                       value="<?php echo htmlspecialchars($form_data['section'] ?? ''); ?>"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Subjects -->
+            <div id="subjects-container" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Matières souhaitées (5 maximum) :</label>
+                <div id="subjects-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Subjects will be loaded here dynamically -->
+                </div>
+            </div>
+
+            <!-- Availabilities -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-3">Disponibilités :</label>
+                <div class="space-y-4">
+                    <?php
+                    $days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                    foreach ($days as $index => $day):
+                    ?>
+                        <div class="border border-gray-200 rounded-md p-4">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="days[]" value="<?php echo $index + 1; ?>" 
+                                       class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 font-medium"><?php echo $day; ?></span>
+                            </label>
+                            <div class="time-slots mt-3 grid grid-cols-2 gap-4" style="display: none;">
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">Début :</label>
+                                    <select name="start_time_<?php echo $index + 1; ?>" 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                        <?php
+                                        for ($hour = 7; $hour <= 23; $hour++) {
+                                            for ($min = 0; $min < 60; $min += 30) {
+                                                $time = sprintf("%02d:%02d", $hour, $min);
+                                                echo "<option value=\"{$time}\">{$time}</option>";
+                                            }
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">Fin :</label>
+                                    <select name="end_time_<?php echo $index + 1; ?>" 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                        <?php
+                                        for ($hour = 7; $hour <= 23; $hour++) {
+                                            for ($min = 0; $min < 60; $min += 30) {
+                                                $time = sprintf("%02d:%02d", $hour, $min);
+                                                echo "<option value=\"{$time}\">{$time}</option>";
+                                            }
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
 
             <!-- Submit Button -->
             <div class="flex justify-end">
@@ -100,24 +205,67 @@ require_once 'includes/header.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Subject selection limit
-    const subjectCheckboxes = document.querySelectorAll('.subject-select');
+    const departmentSelect = document.getElementById('department_id');
+    const subjectsContainer = document.getElementById('subjects-container');
+    const subjectsGrid = document.getElementById('subjects-grid');
     const maxSubjects = 5;
 
-    function updateSubjectCheckboxes() {
-        const checkedCount = document.querySelectorAll('.subject-select:checked').length;
-        subjectCheckboxes.forEach(checkbox => {
-            if (!checkbox.checked && checkedCount >= maxSubjects) {
-                checkbox.disabled = true;
+    // Load subjects when department changes
+    departmentSelect.addEventListener('change', async function() {
+        const departmentId = this.value;
+        if (!departmentId) {
+            subjectsContainer.classList.add('hidden');
+            subjectsGrid.innerHTML = '';
+            return;
+        }
+
+        try {
+            const response = await fetch(`api/get-subjects.php?department_id=${departmentId}`);
+            const subjects = await response.json();
+
+            if (subjects.length > 0) {
+                subjectsContainer.classList.remove('hidden');
+                subjectsGrid.innerHTML = subjects.map(subject => `
+                    <div class="flex items-center">
+                        <input type="checkbox" name="subjects[]" value="${subject.id}" 
+                               id="subject_${subject.id}" class="subject-select h-4 w-4 text-blue-600">
+                        <label for="subject_${subject.id}" class="ml-2 text-sm text-gray-700">
+                            ${subject.name}
+                        </label>
+                    </div>
+                `).join('');
+
+                // Reinitialize subject selection limit
+                initSubjectLimit();
             } else {
-                checkbox.disabled = false;
+                subjectsContainer.classList.add('hidden');
+                subjectsGrid.innerHTML = '';
             }
+        } catch (error) {
+            console.error('Error loading subjects:', error);
+            subjectsContainer.classList.add('hidden');
+            subjectsGrid.innerHTML = '';
+        }
+    });
+
+    function initSubjectLimit() {
+        const subjectCheckboxes = document.querySelectorAll('.subject-select');
+        
+        function updateSubjectCheckboxes() {
+            const checkedCount = document.querySelectorAll('.subject-select:checked').length;
+            subjectCheckboxes.forEach(checkbox => {
+                if (!checkbox.checked && checkedCount >= maxSubjects) {
+                    checkbox.disabled = true;
+                } else {
+                    checkbox.disabled = false;
+                }
+            });
+        }
+
+        subjectCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSubjectCheckboxes);
         });
     }
-
-    subjectCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateSubjectCheckboxes);
-    });
 
     // Availability time slots
     document.querySelectorAll('input[name="days[]"]').forEach(checkbox => {

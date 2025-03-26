@@ -8,19 +8,17 @@ $pageTitle = 'Départements';
 
 $db = Database::getInstance()->getConnection();
 
-// Récupérer les départements avec leurs statistiques
+// Get departments with their statistics and subjects
 $query = "
     SELECT 
         d.id,
         d.name,
-        COUNT(DISTINCT CASE WHEN u.user_type = 'tutor' THEN u.id END) as tutor_count,
-        COUNT(DISTINCT CASE WHEN u.user_type = 'tutee' THEN u.id END) as tutee_count,
+        COUNT(DISTINCT CASE WHEN u.user_type = 'tutor' AND u.status = 'published' THEN u.id END) as tutor_count,
+        COUNT(DISTINCT CASE WHEN u.user_type = 'tutee' AND u.status = 'published' THEN u.id END) as tutee_count,
         GROUP_CONCAT(DISTINCT s.name ORDER BY s.name) as subjects
     FROM departments d
     LEFT JOIN users u ON d.id = u.department_id
-    LEFT JOIN tutors t ON u.id = t.user_id
-    LEFT JOIN tutor_subjects ts ON t.id = ts.tutor_id
-    LEFT JOIN subjects s ON ts.subject_id = s.id
+    LEFT JOIN subjects s ON s.department_id = d.id
     GROUP BY d.id
     ORDER BY d.name
 ";
@@ -68,17 +66,21 @@ require_once 'includes/header.php';
                         <div class="mb-6">
                             <h3 class="text-sm font-semibold text-gray-700 mb-2">Matières disponibles :</h3>
                             <div class="flex flex-wrap gap-1">
-                                <?php foreach (array_slice(explode(',', $dept['subjects']), 0, 5) as $subject): ?>
+                                <?php 
+                                $subjects = explode(',', $dept['subjects']);
+                                $display_subjects = array_slice($subjects, 0, 5);
+                                foreach ($display_subjects as $subject): 
+                                ?>
                                     <span class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
                                         <?php echo htmlspecialchars($subject); ?>
                                     </span>
                                 <?php endforeach; ?>
                                 <?php 
-                                $subject_count = count(explode(',', $dept['subjects']));
-                                if ($subject_count > 5):
+                                $remaining = count($subjects) - count($display_subjects);
+                                if ($remaining > 0):
                                 ?>
                                     <span class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-                                        +<?php echo $subject_count - 5; ?> autres
+                                        +<?php echo $remaining; ?> autres
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -113,5 +115,5 @@ require_once 'includes/header.php';
         </div>
     </div>
 </main>
-</body>
-</html>
+
+<?php require_once 'includes/footer.php'; ?>

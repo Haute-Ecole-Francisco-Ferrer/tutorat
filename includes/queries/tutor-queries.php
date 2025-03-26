@@ -33,6 +33,7 @@ function getLatestTutors($db, $department_id = null, $limit = 6) {
         LEFT JOIN tutor_subjects ts ON t.id = ts.tutor_id
         LEFT JOIN subjects s ON ts.subject_id = s.id
         WHERE u.user_type = 'tutor'
+        AND u.status = 'published'
     ";
 
     $params = [];
@@ -80,6 +81,7 @@ function getFilteredTutors($db, $department_id = null, $subject_id = null) {
         LEFT JOIN tutor_subjects ts ON t.id = ts.tutor_id
         LEFT JOIN subjects s ON ts.subject_id = s.id
         WHERE u.user_type = 'tutor'
+        AND u.status = 'published'
     ";
 
     $params = [];
@@ -118,13 +120,15 @@ function getTutorsAvailabilities($db, $tutor_ids) {
 
     $placeholders = str_repeat('?,', count($tutor_ids) - 1) . '?';
     $query = "
-        SELECT user_id, 
-               day_of_week, 
-               DATE_FORMAT(start_time, '%H:%i') as start_time,
-               DATE_FORMAT(end_time, '%H:%i') as end_time
-        FROM availability
-        WHERE user_id IN ($placeholders)
-        ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+        SELECT a.user_id, 
+               a.day_of_week, 
+               DATE_FORMAT(a.start_time, '%H:%i') as start_time,
+               DATE_FORMAT(a.end_time, '%H:%i') as end_time
+        FROM availability a
+        JOIN users u ON a.user_id = u.id
+        WHERE u.id IN ($placeholders)
+        AND u.status = 'published'
+        ORDER BY FIELD(a.day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
     ";
 
     $stmt = $db->prepare($query);
