@@ -4,6 +4,7 @@ require_once 'config/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/validation/profile-validation.php';
 require_once 'includes/components/profile-form.php';
+require_once 'includes/utils/department-colors.php';
 
 // Verify user is logged in and is a tutee
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'tutee') {
@@ -68,7 +69,7 @@ require_once 'includes/header.php';
 <div class="container mx-auto px-4 py-8">
     <div class="max-w-4xl mx-auto">
         <!-- Profile Header -->
-        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden border-t-4 <?php echo getDepartmentBorderClass($user['department_id']); ?>">
             <div class="p-6">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
@@ -89,7 +90,7 @@ require_once 'includes/header.php';
                             <h1 class="text-2xl font-bold">
                                 <?php echo htmlspecialchars($user['firstname'] . ' ' . $user['lastname']); ?>
                             </h1>
-                            <p class="text-gray-600">
+                            <p style="color: <?php echo getDepartmentColor($user['department_id']); ?>;">
                                 <?php echo htmlspecialchars($user['department_name']); ?> - 
                                 <?php echo htmlspecialchars($user['section']); ?>
                             </p>
@@ -102,7 +103,8 @@ require_once 'includes/header.php';
                         </div>
                     </div>
                     <a href="edit-profile.php" 
-                       class="inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                       class="inline-block px-4 py-2 text-white rounded hover:opacity-90 transition-colors"
+                       style="background-color: <?php echo getDepartmentColor($user['department_id']); ?>;">
                         Modifier mon profil
                     </a>
                 </div>

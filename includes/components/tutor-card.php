@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../includes/utils/department-colors.php';
+
 function renderTutorCard($tutor, $availability_by_tutor = []) {
     $days_fr = [
         'Monday' => 'Lundi',
@@ -10,7 +12,7 @@ function renderTutorCard($tutor, $availability_by_tutor = []) {
         'Sunday' => 'Dimanche'
     ];
     ?>
-    <div class="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-[1.02] transition-transform duration-200">
+    <div class="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-[1.02] transition-transform duration-200 border-t-4 <?php echo getDepartmentBorderClass($tutor['department_id']); ?>">
         <div class="p-4">
             <div class="flex gap-4">
                 <!-- Left column with photo and basic info -->
@@ -31,7 +33,7 @@ function renderTutorCard($tutor, $availability_by_tutor = []) {
                     <h3 class="text-lg font-semibold text-gray-800 text-center">
                         <?php echo htmlspecialchars($tutor['username']); ?>
                     </h3>
-                    <p class="text-sm text-gray-600 text-center">
+                    <p class="text-sm text-center" style="color: <?php echo getDepartmentColor($tutor['department_id']); ?>">
                         <?php echo htmlspecialchars($tutor['department_name']); ?>
                     </p>
                 </div>
@@ -43,7 +45,8 @@ function renderTutorCard($tutor, $availability_by_tutor = []) {
                             <h4 class="text-sm font-medium text-gray-700 mb-2">Matières :</h4>
                             <div class="flex flex-wrap gap-1">
                                 <?php foreach (explode(',', $tutor['subjects']) as $subject): ?>
-                                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                    <span class="inline-block text-xs px-2 py-1 rounded" 
+                                          style="background-color: <?php echo getDepartmentColor($tutor['department_id']); ?>20; color: <?php echo getDepartmentColor($tutor['department_id']); ?>;">
                                         <?php echo htmlspecialchars($subject); ?>
                                     </span>
                                 <?php endforeach; ?>
@@ -79,7 +82,8 @@ function renderTutorCard($tutor, $availability_by_tutor = []) {
                         </div>
                         <?php if ($tutor['current_tutees'] < 4): ?>
                             <a href="contact-tutor.php?id=<?php echo $tutor['id']; ?>" 
-                               class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm">
+                               class="inline-block text-white px-4 py-2 rounded hover:opacity-90 transition-colors text-sm"
+                               style="background-color: <?php echo getDepartmentColor($tutor['department_id']); ?>;">
                                 Contacter
                             </a>
                         <?php else: ?>

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../../utils/department-colors.php';
+
 function renderStatusCell($rel) {
     ?>
     <div class="flex items-center gap-2">
@@ -7,7 +9,8 @@ function renderStatusCell($rel) {
             <?php echo getStatusLabel($rel['status']); ?>
         </span>
         <select onchange="updateStatus('<?php echo $rel['id']; ?>', this.value)"
-                class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                style="border-color: <?php echo getDepartmentColor($rel['tutor_dept_id']); ?>50;">
             <option value="pending" <?php echo $rel['status'] === 'pending' ? 'selected' : ''; ?>>En attente</option>
             <option value="accepted" <?php echo $rel['status'] === 'accepted' ? 'selected' : ''; ?>>Actif</option>
             <option value="archived" <?php echo $rel['status'] === 'archived' ? 'selected' : ''; ?>>Archivé</option>

@@ -1,6 +1,7 @@
 <?php
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/utils/department-colors.php';
 
 session_start();
 $currentPage = 'departments';
@@ -39,21 +40,21 @@ require_once 'includes/header.php';
     <!-- Grille des départements -->
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <?php foreach ($departments as $dept): ?>
-            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow border-t-4 <?php echo getDepartmentBorderClass($dept['id']); ?>">
                 <div class="p-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">
+                    <h2 class="text-xl font-bold mb-4 <?php echo getDepartmentTextClass($dept['id']); ?>">
                         <?php echo htmlspecialchars($dept['name']); ?>
                     </h2>
                     
                     <div class="flex space-x-4 mb-4">
-                        <div class="flex-1 text-center bg-blue-50 rounded-lg p-3">
-                            <span class="block text-2xl font-bold text-blue-600">
+                        <div class="flex-1 text-center rounded-lg p-3" style="background-color: <?php echo getDepartmentColor($dept['id']); ?>20;">
+                            <span class="block text-2xl font-bold" style="color: <?php echo getDepartmentColor($dept['id']); ?>;">
                                 <?php echo $dept['tutor_count']; ?>
                             </span>
                             <span class="text-sm text-gray-600">Tuteur<?php echo $dept['tutor_count'] > 1 ? 's' : ''; ?></span>
                         </div>
-                        <div class="flex-1 text-center bg-green-50 rounded-lg p-3">
-                            <span class="block text-2xl font-bold text-green-600">
+                        <div class="flex-1 text-center rounded-lg p-3" style="background-color: <?php echo getDepartmentColor($dept['id']); ?>10;">
+                            <span class="block text-2xl font-bold" style="color: <?php echo getDepartmentColor($dept['id']); ?>;">
                                 <?php echo $dept['tutee_count']; ?>
                             </span>
                             <span class="text-sm text-gray-600">Tutoré<?php echo $dept['tutee_count'] > 1 ? 's' : ''; ?></span>
@@ -64,7 +65,8 @@ require_once 'includes/header.php';
 
                     <div class="mt-4">
                         <a href="all-tutors.php?department=<?php echo $dept['id']; ?>" 
-                           class="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm w-full text-center">
+                           class="inline-block text-white px-4 py-2 rounded-md hover:opacity-90 transition-colors text-sm w-full text-center"
+                           style="background-color: <?php echo getDepartmentColor($dept['id']); ?>;">
                             Voir les tuteurs
                         </a>
                     </div>

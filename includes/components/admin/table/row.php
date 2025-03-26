@@ -1,13 +1,18 @@
 <?php
 require_once __DIR__ . '/status.php';
+require_once __DIR__ . '/../../../utils/department-colors.php';
 
 function renderTableRow($rel) {
     ?>
     <tr class="relationship-row" 
         data-relationship-id="<?php echo $rel['id']; ?>"
-        data-status="<?php echo htmlspecialchars($rel['status']); ?>">
+        data-status="<?php echo htmlspecialchars($rel['status']); ?>"
+        style="border-left: 3px solid <?php echo getDepartmentColor($rel['tutor_dept_id']); ?>;">
         <td class="px-6 py-4 whitespace-nowrap">
-            <?php echo htmlspecialchars($rel['tutor_firstname'] . ' ' . $rel['tutor_lastname']); ?>
+            <div class="flex items-center">
+                <div class="w-2 h-2 rounded-full mr-2" style="background-color: <?php echo getDepartmentColor($rel['tutor_dept_id']); ?>;"></div>
+                <?php echo htmlspecialchars($rel['tutor_firstname'] . ' ' . $rel['tutor_lastname']); ?>
+            </div>
         </td>
         <td class="px-6 py-4 whitespace-nowrap">
             <?php echo htmlspecialchars($rel['tutee_firstname'] . ' ' . $rel['tutee_lastname']); ?>

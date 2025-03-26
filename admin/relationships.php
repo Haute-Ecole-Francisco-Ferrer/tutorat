@@ -5,6 +5,7 @@ require_once '../includes/functions.php';
 require_once '../includes/auth/admin-auth.php';
 require_once '../includes/components/admin/relationship-table.php';
 require_once '../includes/components/admin/relationship-modal.php';
+require_once '../includes/utils/department-colors.php';
 
 // Verify admin authentication
 checkAdminAuth();
@@ -79,10 +80,18 @@ try {
         }
     }
 
-    // Count total relationships
+    // Count total relationships and active relationships
     $total_relationships = 0;
+    $total_active_relationships = 0;
     foreach ($relationships_by_dept as $dept_data) {
         $total_relationships += count($dept_data['relationships']);
+        
+        // Count only active relationships
+        foreach ($dept_data['relationships'] as $rel) {
+            if ($rel['status'] === 'accepted') {
+                $total_active_relationships++;
+            }
+        }
     }
 
 } catch (Exception $e) {
@@ -100,8 +109,8 @@ require_once '../includes/header.php';
 
     <!-- Summary Card -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h3 class="text-lg font-semibold text-gray-700">Total des relations</h3>
-        <p class="text-3xl font-bold mt-2"><?php echo $total_relationships; ?></p>
+        <h3 class="text-lg font-semibold text-gray-700">Total des relations actives</h3>
+        <p class="text-3xl font-bold mt-2"><?php echo $total_active_relationships; ?></p>
     </div>
 
     <!-- Filters -->
@@ -116,9 +125,9 @@ require_once '../includes/header.php';
 
     <!-- Department Sections -->
     <?php foreach ($relationships_by_dept as $dept_id => $dept_data): ?>
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8 border-t-4 <?php echo getDepartmentBorderClass($dept_id); ?>">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-semibold">
+                <h3 class="text-lg font-semibold <?php echo getDepartmentTextClass($dept_id); ?>">
                     <?php echo htmlspecialchars($dept_data['name']); ?>
                     (<?php echo count($dept_data['relationships']); ?> relations)
                 </h3>

@@ -5,6 +5,7 @@ require_once '../includes/functions.php';
 require_once '../includes/auth/admin-auth.php';
 require_once '../includes/components/admin/relationship-table.php';
 require_once '../includes/components/admin/relationship-modal.php';
+require_once '../includes/utils/department-colors.php';
 
 // Verify admin authentication
 checkAdminAuth();
@@ -184,11 +185,11 @@ require_once '../includes/header.php';
             <h2 class="text-xl font-bold mb-4">Tuteurs en attente de validation</h2>
             
             <?php foreach ($pending_tutors_by_dept as $dept_id => $dept_data): ?>
-                <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-                    <h3 class="text-lg font-semibold mb-3"><?php echo htmlspecialchars($dept_data['name']); ?></h3>
+                <div class="bg-white rounded-lg shadow-md p-6 mb-4 border-t-4 <?php echo getDepartmentBorderClass($dept_id); ?>">
+                    <h3 class="text-lg font-semibold mb-3 <?php echo getDepartmentTextClass($dept_id); ?>"><?php echo htmlspecialchars($dept_data['name']); ?></h3>
                     <div class="space-y-4">
                         <?php foreach ($dept_data['tutors'] as $tutor): ?>
-                            <div class="border rounded-lg p-4">
+                            <div class="border rounded-lg p-4" style="border-color: <?php echo getDepartmentColor($dept_id); ?>20;">
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <h4 class="font-medium">
@@ -213,7 +214,7 @@ require_once '../includes/header.php';
                                         <?php endif; ?>
                                     </div>
                                     <div class="flex space-x-2">
-                                        <a href="pending-tutors.php" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                        <a href="pending-tutors.php" class="text-white px-4 py-2 rounded hover:opacity-90" style="background-color: <?php echo getDepartmentColor($dept_id); ?>;">
                                             Gérer
                                         </a>
                                     </div>
@@ -232,11 +233,11 @@ require_once '../includes/header.php';
             <h2 class="text-xl font-bold mb-4">Tutorés en attente de validation</h2>
             
             <?php foreach ($pending_tutees_by_dept as $dept_id => $dept_data): ?>
-                <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-                    <h3 class="text-lg font-semibold mb-3"><?php echo htmlspecialchars($dept_data['name']); ?></h3>
+                <div class="bg-white rounded-lg shadow-md p-6 mb-4 border-t-4 <?php echo getDepartmentBorderClass($dept_id); ?>">
+                    <h3 class="text-lg font-semibold mb-3 <?php echo getDepartmentTextClass($dept_id); ?>"><?php echo htmlspecialchars($dept_data['name']); ?></h3>
                     <div class="space-y-4">
                         <?php foreach ($dept_data['tutees'] as $tutee): ?>
-                            <div class="border rounded-lg p-4">
+                            <div class="border rounded-lg p-4" style="border-color: <?php echo getDepartmentColor($dept_id); ?>20;">
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <h4 class="font-medium">
@@ -249,7 +250,7 @@ require_once '../includes/header.php';
                                         </p>
                                     </div>
                                     <div class="flex space-x-2">
-                                        <a href="pending-tutees.php" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                        <a href="pending-tutees.php" class="text-white px-4 py-2 rounded hover:opacity-90" style="background-color: <?php echo getDepartmentColor($dept_id); ?>;">
                                             Gérer
                                         </a>
                                     </div>
@@ -264,7 +265,7 @@ require_once '../includes/header.php';
 
     <!-- Link to Relationships Page -->
     <div class="mb-6 text-center">
-        <a href="relationships.php" class="inline-block bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600 transition-colors">
+        <a href="relationships.php" class="inline-block bg-slate-700 text-white px-6 py-3 rounded-md hover:bg-slate-800 transition-colors">
             Voir toutes les relations de tutorat
         </a>
     </div>

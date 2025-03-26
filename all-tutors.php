@@ -3,6 +3,7 @@ require_once 'config/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/queries/tutor-queries.php';
 require_once 'includes/components/tutor-card.php';
+require_once 'includes/utils/department-colors.php';
 
 session_start();
 $currentPage = 'all-tutors';
@@ -54,7 +55,8 @@ require_once 'includes/header.php';
                         <option value="">Tous les départements</option>
                         <?php foreach ($departments as $dept): ?>
                             <option value="<?php echo $dept['id']; ?>" 
-                                    <?php echo $selected_department == $dept['id'] ? 'selected' : ''; ?>>
+                                    <?php echo $selected_department == $dept['id'] ? 'selected' : ''; ?>
+                                    style="background-color: <?php echo getDepartmentColor($dept['id']); ?>20; color: <?php echo getDepartmentColor($dept['id']); ?>;">
                                 <?php echo htmlspecialchars($dept['name']); ?>
                             </option>
                         <?php endforeach; ?>
@@ -84,7 +86,7 @@ require_once 'includes/header.php';
                         Réinitialiser les filtres
                     </a>
                 <?php endif; ?>
-                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                <button type="submit" class="bg-slate-700 text-white px-6 py-2 rounded-md hover:bg-slate-800 transition-colors">
                     Filtrer
                 </button>
             </div>

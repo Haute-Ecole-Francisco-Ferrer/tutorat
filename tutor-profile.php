@@ -4,6 +4,7 @@ require_once 'config/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/validation/profile-validation.php';
 require_once 'includes/components/profile-form.php';
+require_once 'includes/utils/department-colors.php';
 
 // Verify user is logged in and is a tutor
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'tutor') {
@@ -102,7 +103,7 @@ require_once 'includes/header.php';
                             <h1 class="text-2xl font-bold">
                                 <?php echo htmlspecialchars($user['firstname'] . ' ' . $user['lastname']); ?>
                             </h1>
-                            <p class="text-gray-600">
+                            <p style="color: <?php echo getDepartmentColor($user['department_id']); ?>;">
                                 <?php echo htmlspecialchars($user['department_name']); ?> - 
                                 <?php echo htmlspecialchars($user['section']); ?>
                             </p>
@@ -128,7 +129,7 @@ require_once 'includes/header.php';
         </div>
 
         <!-- Subjects -->
-        <div class="mt-6 bg-white rounded-lg shadow-lg p-6">
+        <div class="mt-6 bg-white rounded-lg shadow-lg p-6 border-t-4 <?php echo getDepartmentBorderClass($user['department_id']); ?>">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">Matières enseignées</h2>
                 <a href="edit-subjects.php" class="text-blue-500 hover:underline text-sm">
@@ -137,7 +138,8 @@ require_once 'includes/header.php';
             </div>
             <div class="flex flex-wrap gap-2">
                 <?php foreach ($subjects as $subject): ?>
-                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded">
+                    <span class="px-3 py-1 rounded" 
+                          style="background-color: <?php echo getDepartmentColor($user['department_id']); ?>20; color: <?php echo getDepartmentColor($user['department_id']); ?>;">
                         <?php echo htmlspecialchars($subject); ?>
                     </span>
                 <?php endforeach; ?>
@@ -150,10 +152,10 @@ require_once 'includes/header.php';
         </div>
 
         <!-- Availabilities -->
-        <div class="mt-6 bg-white rounded-lg shadow-lg p-6">
+        <div class="mt-6 bg-white rounded-lg shadow-lg p-6 border-t-4 <?php echo getDepartmentBorderClass($user['department_id']); ?>">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">Disponibilités</h2>
-                <a href="edit-availability.php" class="text-blue-500 hover:underline text-sm">
+                <a href="edit-availability.php" class="hover:underline text-sm" style="color: <?php echo getDepartmentColor($user['department_id']); ?>;">
                     Gérer mes disponibilités
                 </a>
             </div>
